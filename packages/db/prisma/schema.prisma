@@ -1,0 +1,425 @@
+// SANARYS 360 - modele de donnees Phase 1 (acquisition premium) + fondations Phase 2 (portail client).
+//
+// Principe non negociable (cahier des charges, section 15.2) : les donnees commerciales,
+// operationnelles et cliniques ne sont jamais le meme objet. Ce schema ne modelise
+// AUCUNE donnee clinique (pas de dossier medical, pas d'intervention, pas de dispatch) -
+// choix delibere tant que la gouvernance medicale/juridique n'a pas valide ce perimetre
+// (section 1.4 "Gate de lancement" et section 19.3).
+//
+// Multi-organisation : un utilisateur accede aux organisations via OrganizationMembership
+// (jamais un organizationId unique en session). Le personnel SANARYS est porte par
+// User.staffRole et n'est jamais "membre" d'une organisation cliente.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Reference geographique
+// ---------------------------------------------------------------------------
+
+model IndustrialZone {
+  id        String   @id @default(cuid())
+  name      String
+  city      String
+  region    String?
+  lat       Float?
+  lng       Float?
+  isPilot   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  leads         Lead[]
+  simulations   Simulation[]
+  organizations Organization[]
+  sites         Site[]
+
+  @@index([city])
+}
+
+// ---------------------------------------------------------------------------
+// Acquisition (leads, simulateur, demandes d'audit)
+// ---------------------------------------------------------------------------
+
+enum LeadStatus {
+  NEW
+  QUALIFIED
+  CONTACTED
+  AUDIT_REQUESTED
+  PROPOSAL_SENT
+  CLOSED_LOST
+  CLOSED_WON
+}
+
+enum LeadPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model Lead {
+  id               String       @id @default(cuid())
+  status           LeadStatus   @default(NEW)
+  priority         LeadPriority @default(MEDIUM)
+  source           String?
+  campaign         String?
+  contactName      String
+  contactRole      String?
+  companyName      String
+  contactEmail     String
+  contactPhone     String?
+  preferredChannel String?
+
+  industrialZoneId String?
+  industrialZone   IndustrialZone? @relation(fields: [industrialZoneId], references: [id])
+
+  consentMarketing Boolean   @default(false)
+  consentTimestamp DateTime?
+  consentVersion   String?
+
+  dedupeKey    String    @unique
+  score        Int?
+  ownerRef     String?
+  nextActionAt DateTime?
+
+  simulationId String?     @unique
+  simulation   Simulation? @relation(fields: [simulationId], references: [id])
+
+  auditRequests AuditRequest[]
+  events        LeadEvent[]
+
+  crmSyncStatus String @default("NOT_SYNCED")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([contactEmail])
+  @@index([nextActionAt])
+}
+
+/// Historique commercial d'un lead : chaque changement de statut, affectation,
+/// contact ou note laisse une trace consultable dans la file interne staff.
+model LeadEvent {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id])
+  type      String
+  message   String?
+  actorRef  String?
+  createdAt DateTime @default(now())
+
+  @@index([leadId, createdAt])
+}
+
+enum RuleSetStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+/// Regles metier versionnees du moteur de recommandation du simulateur.
+/// Gouvernance : un ruleset ACTIVE est IMMUABLE (enforce dans la couche service) -
+/// toute modification passe par une nouvelle version DRAFT, approuvee puis activee.
+/// Chaque regle (dans rulesJson) porte id / justification / date d'effet / auteur / statut
+/// (exigence cahier des charges section 8.3).
+model SimulationRuleSet {
+  id          String        @id @default(cuid())
+  version     String        @unique
+  effectiveAt DateTime
+  author      String
+  approvedBy  String?
+  status      RuleSetStatus @default(DRAFT)
+  changelog   String?
+  rulesJson   Json
+
+  simulations Simulation[]
+
+  createdAt DateTime @default(now())
+}
+
+enum SimulationStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+/// resultJson est un SNAPSHOT complet et fige au moment du calcul : entrees, version
+/// du moteur, regles declenchees, justifications, hypotheses, horodatage et mention
+/// non contractuelle. Les anciennes simulations ne changent jamais retroactivement.
+model Simulation {
+  id String @id @default(cuid())
+
+  ruleSetId String
+  ruleSet   SimulationRuleSet @relation(fields: [ruleSetId], references: [id])
+
+  industrialZoneId String?
+  industrialZone   IndustrialZone? @relation(fields: [industrialZoneId], references: [id])
+
+  status SimulationStatus @default(IN_PROGRESS)
+
+  inputJson  Json
+  resultJson Json?
+
+  // Le token de reprise n'est jamais stocke en clair : hash SHA-256, expiration, revocable.
+  resumeTokenHash      String    @unique
+  resumeTokenExpiresAt DateTime
+
+  pdfDocumentId String?   @unique
+  pdfDocument   Document? @relation(fields: [pdfDocumentId], references: [id])
+
+  lead Lead?
+
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([status])
+}
+
+enum AuditRequestStatus {
+  SUBMITTED
+  SCHEDULED
+  DONE
+  CANCELLED
+}
+
+model AuditRequest {
+  id            String             @id @default(cuid())
+  leadId        String
+  lead          Lead               @relation(fields: [leadId], references: [id])
+  status        AuditRequestStatus @default(SUBMITTED)
+  preferredDate DateTime?
+  notes         String?
+  createdAt     DateTime           @default(now())
+}
+
+enum DocumentKind {
+  SIMULATION_SUMMARY
+  CONTRACT
+  REPORT
+  OTHER
+}
+
+/// Stockage abstrait (adaptateur disque local dans ce build, interface compatible S3).
+model Document {
+  id         String       @id @default(cuid())
+  kind       DocumentKind
+  storageKey String
+  mimeType   String
+  ownerOrgId String?
+  createdAt  DateTime     @default(now())
+
+  simulation Simulation?
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2 - organisations, sites, appartenances, utilisateurs, sessions
+// ---------------------------------------------------------------------------
+
+enum OrgType {
+  GROUPEMENT
+  COMPANY
+  ZONE_MANAGER
+}
+
+model Organization {
+  id   String  @id @default(cuid())
+  name String
+  type OrgType
+
+  parentId String?
+  parent   Organization?  @relation("OrgHierarchy", fields: [parentId], references: [id])
+  children Organization[] @relation("OrgHierarchy")
+
+  industrialZoneId String?
+  industrialZone   IndustrialZone? @relation(fields: [industrialZoneId], references: [id])
+
+  memberships     OrganizationMembership[]
+  sites           Site[]
+  contracts       Contract[]
+  contractParties ContractParty[]
+  reports         Report[]
+
+  createdAt DateTime @default(now())
+}
+
+/// Un site physique d'une entreprise (une entreprise peut avoir plusieurs sites,
+/// un site appartient a une zone industrielle).
+model Site {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  address        String?
+
+  industrialZoneId String?
+  industrialZone   IndustrialZone? @relation(fields: [industrialZoneId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+enum MembershipRole {
+  ORG_ADMIN
+  HSE_MANAGER
+  COMPANY_DIRECTOR
+  ZONE_MANAGER
+  VIEWER
+}
+
+/// Appartenance utilisateur <-> organisation avec role. Un utilisateur peut
+/// appartenir a plusieurs organisations (ex. dirigeant de deux PME du groupement).
+model OrganizationMembership {
+  id             String         @id @default(cuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id])
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  role           MembershipRole
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+}
+
+enum StaffRole {
+  ADMIN
+  SALES
+  OPERATIONS
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+}
+
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  passwordHash String?
+  fullName     String
+
+  /// Personnel SANARYS uniquement (acces staff/leads, administration). Null pour les clients.
+  staffRole StaffRole?
+
+  mfaEnabled Boolean    @default(false)
+  status     UserStatus @default(INVITED)
+
+  // Invitations et reinitialisations : tokens hashes (jamais en clair) + expiration.
+  inviteTokenHash String?   @unique
+  inviteExpiresAt DateTime?
+  resetTokenHash  String?   @unique
+  resetExpiresAt  DateTime?
+
+  // Verrouillage progressif apres echecs de connexion repetes.
+  failedLoginCount Int       @default(0)
+  lockedUntil      DateTime?
+
+  invitedAt   DateTime  @default(now())
+  activatedAt DateTime?
+
+  memberships OrganizationMembership[]
+  sessions    Session[]
+
+  createdAt DateTime @default(now())
+}
+
+/// Session serveur (cookie httpOnly). Rotation a chaque connexion ; revocation
+/// individuelle ou globale ("deconnecter tous les appareils").
+model Session {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  tokenHash String    @unique
+  ip        String?
+  userAgent String?
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+
+  @@index([userId])
+}
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  TERMINATED
+}
+
+/// Contrat porte par une organisation (souvent le groupement pour la convention-cadre),
+/// avec des parties prenantes individuelles (PME membres) via ContractParty.
+model Contract {
+  id             String         @id @default(cuid())
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  label          String
+  modules        String[]
+  startDate      DateTime
+  endDate        DateTime?
+  status         ContractStatus @default(ACTIVE)
+
+  parties ContractParty[]
+}
+
+model ContractParty {
+  id             String       @id @default(cuid())
+  contractId     String
+  contract       Contract     @relation(fields: [contractId], references: [id])
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  /// Part indicative de la cle de repartition (ex. 0.18 = 18%). Jamais un prix ferme.
+  shareRatio     Float?
+
+  @@unique([contractId, organizationId])
+}
+
+/// Rapport mensuel agrege. kpiJson ne doit JAMAIS contenir de donnee de sante
+/// individuelle (cahier des charges section 9.2 / REP-AC-01) - agregats uniquement.
+model Report {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  period         String
+  kpiJson        Json
+  publishedAt    DateTime?
+  createdAt      DateTime     @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Transverse : journal d'audit et evenements analytics
+// ---------------------------------------------------------------------------
+
+/// Journal des actions sensibles : connexions, echecs, exports, changements de
+/// droits, acces aux documents. Jamais de donnee de sante (aucune n'existe ici).
+model AuditLog {
+  id           String   @id @default(cuid())
+  actorUserId  String?
+  action       String
+  resourceType String
+  resourceId   String?
+  ip           String?
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  @@index([actorUserId, createdAt])
+  @@index([resourceType, resourceId])
+}
+
+/// Plan de marquage (cahier des charges section 21.2) : nom d'evenement + proprietes
+/// autorisees uniquement. La couche service rejette texte libre, email, telephone et
+/// toute propriete hors liste blanche.
+model AnalyticsEvent {
+  id         String   @id @default(cuid())
+  name       String
+  properties Json
+  sessionRef String?
+  createdAt  DateTime @default(now())
+
+  @@index([name, createdAt])
+}

@@ -1,0 +1,29 @@
+{
+  "name": "sanarys-360",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SANARYS 360 - plateforme de sante operationnelle mutualisee pour zones industrielles",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev -w @sanarys/api",
+    "dev:web": "npm run dev -w @sanarys/web",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:start": "bash scripts/db-start.sh",
+    "db:create": "bash scripts/db-create.sh",
+    "db:migrate": "npm run prisma:migrate -w @sanarys/db",
+    "db:seed": "npm run seed -w @sanarys/db"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "prettier": "^3.3.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "@sanarys/config",
+  "private": true,
+  "version": "0.1.0",
+  "main": "index.js",
+  "files": [
+    "tsconfig.node.json",
+    "tsconfig.react.json",
+    "eslint.base.cjs",
+    "prettier.config.cjs"
+  ]
+}
