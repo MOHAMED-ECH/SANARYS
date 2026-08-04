@@ -4,6 +4,11 @@ import { defineConfig, devices } from "@playwright/test";
  * Les tests e2e s'executent contre les serveurs de developpement deja
  * demarres (API sur :4000, web sur :3000). Voir le README pour la
  * procedure complete.
+ *
+ * Le projet "setup" authentifie une fois par role et enregistre les sessions ;
+ * les tests les reutilisent au lieu de se reconnecter. Cela evite de declencher
+ * le limiteur de debit sur /auth/login, qui est un controle de securite reel
+ * qu'on ne veut pas affaiblir pour les besoins des tests.
  */
 export default defineConfig({
   testDir: "./specs",
@@ -22,5 +27,17 @@ export default defineConfig({
       executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH ?? undefined,
     },
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "setup",
+      testMatch: /auth\.setup\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "chromium",
+      testIgnore: /auth\.setup\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+      dependencies: ["setup"],
+    },
+  ],
 });

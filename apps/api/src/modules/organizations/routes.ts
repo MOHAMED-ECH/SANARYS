@@ -45,6 +45,17 @@ const ReportSchema = z.object({
   publishedAt: z.string().nullable(),
 });
 
+const MemberSchema = z.object({
+  userId: z.string(),
+  fullName: z.string(),
+  email: z.string(),
+  role: z.enum(["ORG_ADMIN", "HSE_MANAGER", "COMPANY_DIRECTOR", "ZONE_MANAGER", "VIEWER"]),
+  status: z.enum(["INVITED", "ACTIVE", "SUSPENDED"]),
+  mfaEnabled: z.boolean(),
+  invitedAt: z.string(),
+  activatedAt: z.string().nullable(),
+});
+
 export const organizationsRoutes: FastifyPluginAsyncZod = async (app) => {
   /** Verifie l'autorisation ET renvoie le scope applicable, ou null si refus. */
   function guard(request: { actor?: Parameters<typeof can>[0] }, organizationId: string, action: Parameters<typeof can>[1]) {
@@ -191,6 +202,49 @@ export const organizationsRoutes: FastifyPluginAsyncZod = async (app) => {
           period: report.period,
           kpi: report.kpiJson as Record<string, number | string | boolean>,
           publishedAt: report.publishedAt?.toISOString() ?? null,
+        })),
+      );
+    },
+  );
+
+  app.get(
+    "/organizations/:id/members",
+    {
+      preHandler: app.requireAuth,
+      schema: {
+        tags: ["portail"],
+        summary: "Membres de l'organisation",
+        params: z.object({ id: z.string() }),
+        response: { 200: z.array(MemberSchema), ...errorResponses },
+      },
+    },
+    async (request, reply) => {
+      const scope = guard(request, request.params.id, "organization:read");
+      if (!scope) return reply.code(404).send({ message: "Organisation introuvable." });
+
+      const memberships = await app.prisma.organizationMembership.findMany({
+        where: { organizationId: request.params.id, organization: { id: { in: scope } } },
+        include: { user: true },
+        orderBy: { createdAt: "asc" },
+      });
+
+      await app.audit(request, {
+        action: "portal.members_listed",
+        resourceType: "organization",
+        resourceId: request.params.id,
+        metadata: { count: memberships.length },
+      });
+
+      return reply.send(
+        memberships.map((membership) => ({
+          userId: membership.userId,
+          fullName: membership.user.fullName,
+          email: membership.user.email,
+          role: membership.role,
+          status: membership.user.status,
+          mfaEnabled: membership.user.mfaEnabled,
+          invitedAt: membership.user.invitedAt.toISOString(),
+          activatedAt: membership.user.activatedAt?.toISOString() ?? null,
         })),
       );
     },

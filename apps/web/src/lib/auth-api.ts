@@ -73,6 +73,17 @@ export interface OrganizationDto {
   siteCount: number;
 }
 
+export interface MemberDto {
+  userId: string;
+  fullName: string;
+  email: string;
+  role: "ORG_ADMIN" | "HSE_MANAGER" | "COMPANY_DIRECTOR" | "ZONE_MANAGER" | "VIEWER";
+  status: "INVITED" | "ACTIVE" | "SUSPENDED";
+  mfaEnabled: boolean;
+  invitedAt: string;
+  activatedAt: string | null;
+}
+
 export interface StaffLead {
   id: string;
   status: string;
@@ -109,6 +120,14 @@ export const authApi = {
   contracts: (id: string) => authRequest<ContractDto[]>(`/organizations/${id}/contracts`),
 
   reports: (id: string) => authRequest<ReportDto[]>(`/organizations/${id}/reports`),
+
+  members: (id: string) => authRequest<MemberDto[]>(`/organizations/${id}/members`),
+
+  inviteMember: (id: string, payload: { email: string; fullName: string; role: string }) =>
+    authRequest<{ id: string }>(`/organizations/${id}/users/invite`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 
   staffLeads: (params: { status?: string; priority?: string } = {}) => {
     const query = new URLSearchParams(

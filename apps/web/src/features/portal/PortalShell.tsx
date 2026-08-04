@@ -6,12 +6,13 @@ import clsx from "clsx";
 import type { MeResponse } from "@sanarys/schemas";
 import { authApi, AuthError } from "@/lib/auth-api";
 
-export type PortalTab = "dashboard" | "contracts" | "reports";
+export type PortalTab = "dashboard" | "contracts" | "reports" | "members";
 
 const TABS: { key: PortalTab; label: string }[] = [
   { key: "dashboard", label: "Tableau de bord" },
   { key: "contracts", label: "Contrats" },
   { key: "reports", label: "Rapports" },
+  { key: "members", label: "Membres" },
 ];
 
 /**
@@ -24,7 +25,12 @@ export function PortalShell({
   children,
 }: {
   active: PortalTab;
-  children: (context: { me: MeResponse; organizationId: string }) => React.ReactNode;
+  children: (context: {
+    me: MeResponse;
+    organizationId: string;
+    /** Vrai uniquement si l'utilisateur est ORG_ADMIN par appartenance DIRECTE. */
+    canInvite: boolean;
+  }) => React.ReactNode;
 }) {
   const router = useRouter();
   const [me, setMe] = useState<MeResponse | null>(null);
@@ -149,13 +155,17 @@ export function PortalShell({
         </div>
       </div>
 
-      <div className="container-page py-10">{children({ me, organizationId })}</div>
+      <div className="container-page py-10">
+        {children({ me, organizationId, canInvite: membership.role === "ORG_ADMIN" })}
+      </div>
     </div>
   );
 }
 
 function tabPath(tab: PortalTab) {
-  return tab === "contracts" ? "contrats" : "rapports";
+  if (tab === "contracts") return "contrats";
+  if (tab === "reports") return "rapports";
+  return "membres";
 }
 
 function roleLabel(role: string) {
