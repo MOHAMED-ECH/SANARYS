@@ -13,7 +13,7 @@ const VARIANTS: Record<Variant, string> = {
   secondary: "border border-navy-950/15 bg-mist-white text-navy-950 hover:border-petrol-600 hover:text-petrol-600",
   ghost: "text-navy-950 hover:bg-navy-950/5",
   // Le cuivre reste une signature ponctuelle : un seul bouton accent par ecran.
-  accent: "bg-copper-500 text-mist-white hover:bg-copper-300 hover:text-navy-950",
+  accent: "bg-copper-500 text-mist-white hover:bg-copper-500/90",
 };
 
 const SIZES: Record<Size, string> = {

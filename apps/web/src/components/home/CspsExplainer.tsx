@@ -45,7 +45,7 @@ export function CspsExplainer() {
                       <h3
                         className={clsx(
                           "font-heading text-lg font-bold transition-colors",
-                          active ? "text-navy-950" : "text-slate-900/75",
+                          active ? "text-navy-950" : "text-slate-600",
                         )}
                       >
                         {item.title}
@@ -53,7 +53,7 @@ export function CspsExplainer() {
                       <p
                         className={clsx(
                           "mt-1.5 text-[0.95rem] leading-relaxed transition-colors",
-                          active ? "text-slate-600" : "text-slate-600/70",
+                          active ? "text-slate-600" : "text-slate-400",
                         )}
                       >
                         {item.description}

@@ -229,7 +229,7 @@ export function LeadForm({ intent, zones }: Props) {
             className="block font-heading text-sm font-semibold text-navy-950"
           >
             Votre message
-            <span className="ms-2 text-xs font-normal text-slate-600/70">(facultatif)</span>
+            <span className="ms-2 text-xs font-normal text-slate-400">(facultatif)</span>
           </label>
           <textarea
             id="lead-message"

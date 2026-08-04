@@ -67,7 +67,7 @@ export function ZonesMap({ zones }: { zones: IndustrialZoneDto[] }) {
                     Zone pilote
                   </span>
                 ) : (
-                  <span className="shrink-0 text-xs text-slate-600/70">Éligible</span>
+                  <span className="shrink-0 text-xs text-slate-400">Éligible</span>
                 )}
               </button>
             </li>
@@ -114,7 +114,7 @@ export function ZonesMap({ zones }: { zones: IndustrialZoneDto[] }) {
                   cx={x}
                   cy={y}
                   r={zone.isPilot ? 2.4 : 1.8}
-                  fill={zone.isPilot ? "#B5652C" : "#0E6E7A"}
+                  fill={zone.isPilot ? "#A85B26" : "#0E6E7A"}
                   stroke="#FFFFFF"
                   strokeWidth="0.6"
                 />

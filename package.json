@@ -5,7 +5,8 @@
   "description": "SANARYS 360 - plateforme de sante operationnelle mutualisee pour zones industrielles",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "tests/*"
   ],
   "scripts": {
     "dev:api": "npm run dev -w @sanarys/api",
@@ -13,7 +14,8 @@
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
+    "test": "npm run test -w @sanarys/api",
+    "test:e2e": "npm run test -w @sanarys/e2e",
     "db:start": "bash scripts/db-start.sh",
     "db:create": "bash scripts/db-create.sh",
     "db:migrate": "npm run prisma:migrate -w @sanarys/db",

@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  DATABASE_URL: postgresql://sanarys:sanarys@localhost:5432/sanarys_test
+  SESSION_SECRET: ci-only-secret-not-used-in-production
+  NODE_ENV: test
+
+jobs:
+  qualite:
+    name: Typecheck & tests unitaires
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sanarys
+          POSTGRES_PASSWORD: sanarys
+          POSTGRES_DB: sanarys_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Générer le client Prisma
+        run: npm run prisma:generate -w @sanarys/db
+
+      - name: Appliquer les migrations
+        run: npm run prisma:deploy -w @sanarys/db
+
+      - name: Peupler les données de démonstration
+        run: npm run seed -w @sanarys/db
+
+      - name: Vérification des types
+        run: npm run typecheck
+
+      - name: Tests unitaires et d'intégration (dont isolation multi-tenant)
+        run: npm test
+
+  e2e:
+    name: Parcours end-to-end et accessibilité
+    runs-on: ubuntu-latest
+    needs: qualite
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sanarys
+          POSTGRES_PASSWORD: sanarys
+          POSTGRES_DB: sanarys_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Installer le navigateur Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Préparer la base
+        run: |
+          npm run prisma:generate -w @sanarys/db
+          npm run prisma:deploy -w @sanarys/db
+          npm run seed -w @sanarys/db
+
+      - name: Construire l'application web
+        run: npm run build -w @sanarys/web
+
+      - name: Démarrer l'API et le site
+        run: |
+          NODE_ENV=production npm run dev -w @sanarys/api &
+          npm run start -w @sanarys/web &
+          npx wait-on http://127.0.0.1:4000/health http://127.0.0.1:3000 --timeout 120000
+
+      - name: Tests end-to-end et accessibilité
+        run: npm run test:e2e
+
+      - name: Publier le rapport en cas d'échec
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: tests/e2e/playwright-report
+          retention-days: 7

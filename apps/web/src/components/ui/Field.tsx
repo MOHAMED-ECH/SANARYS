@@ -5,7 +5,7 @@ import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from "react
 import { useId } from "react";
 
 const CONTROL =
-  "w-full rounded-md border bg-mist-white px-3.5 py-2.5 text-[0.95rem] text-navy-950 transition-colors duration-fast placeholder:text-slate-600/50 focus:border-petrol-600";
+  "w-full rounded-md border bg-mist-white px-3.5 py-2.5 text-[0.95rem] text-navy-950 transition-colors duration-fast placeholder:text-slate-400 focus:border-petrol-600";
 
 function Wrapper({
   label,
@@ -31,7 +31,7 @@ function Wrapper({
             *
           </span>
         ) : (
-          <span className="ms-2 text-xs font-normal text-slate-600/70">(facultatif)</span>
+          <span className="ms-2 text-xs font-normal text-slate-400">(facultatif)</span>
         )}
       </label>
       {hint ? (

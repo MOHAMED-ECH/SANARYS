@@ -22,7 +22,10 @@ export const color = {
     100: "#E3F2F1",
   },
   copper: {
-    500: "#B5652C",
+    // 5,01:1 sur blanc ET avec du texte blanc : utilisable pour du texte
+    // et des boutons sans enfreindre WCAG AA (le #B5652C initial plafonnait
+    // a 4,31:1 et echouait dans les deux sens).
+    500: "#A85B26",
     300: "#D99A64",
   },
   sand: {
@@ -34,6 +37,10 @@ export const color = {
     white: "#FFFFFF",
   },
   slate: {
+    // Texte secondaire accessible (4,55:1 minimum sur nos fonds clairs).
+    // A utiliser au lieu d'une opacite reduite sur slate-600, qui faisait
+    // tomber le contraste sous le seuil.
+    400: "#6B7280",
     600: "#4A5568",
     900: "#1A202C",
   },

@@ -1,0 +1,22 @@
+# Option de developpement local. Utile mais NON obligatoire : le projet
+# fonctionne aussi avec un PostgreSQL installe nativement (voir README).
+services:
+  postgres:
+    image: postgres:16
+    container_name: sanarys-postgres
+    environment:
+      POSTGRES_USER: sanarys
+      POSTGRES_PASSWORD: sanarys
+      POSTGRES_DB: sanarys_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - sanarys-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sanarys -d sanarys_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  sanarys-pgdata:

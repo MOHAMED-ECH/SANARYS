@@ -132,7 +132,7 @@ export function MiniSimulator() {
       >
         {loading ? "Préparation…" : "Poursuivre le simulateur"}
       </Button>
-      <p className="mt-3 text-center text-xs text-slate-600/80">
+      <p className="mt-3 text-center text-xs text-slate-400">
         Résultat indicatif, non contractuel. Aucun prix ferme n&apos;est calculé.
       </p>
     </div>
