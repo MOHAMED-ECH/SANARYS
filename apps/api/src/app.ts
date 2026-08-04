@@ -17,11 +17,15 @@ import { env } from "./env.js";
 import { createNotificationAdapter, type NotificationPort } from "./integrations/notifications/index.js";
 import { createCrmAdapter, type CrmPort } from "./integrations/crm/index.js";
 import { createStorageAdapter, type StoragePort } from "./integrations/storage/index.js";
+import { authPlugin } from "./plugins/auth.js";
 import { zonesRoutes } from "./modules/zones/routes.js";
 import { simulationsRoutes } from "./modules/simulations/routes.js";
 import { leadsRoutes } from "./modules/leads/routes.js";
 import { auditRequestsRoutes } from "./modules/audit-requests/routes.js";
 import { analyticsRoutes } from "./modules/analytics/routes.js";
+import { authRoutes } from "./modules/auth/routes.js";
+import { staffRoutes } from "./modules/staff/routes.js";
+import { organizationsRoutes } from "./modules/organizations/routes.js";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -54,10 +58,13 @@ export async function buildApp(): Promise<FastifyInstance> {
     credentials: true,
   });
   await app.register(cookie, { secret: env.SESSION_SECRET });
-  await app.register(rateLimit, {
-    max: 200,
-    timeWindow: "1 minute",
-  });
+
+  // Le limiteur de debit est actif partout SAUF en test automatise, ou les
+  // suites enchainent volontairement des dizaines de requetes identiques.
+  // Son comportement propre est verifie par un test dedie.
+  if (env.NODE_ENV !== "test") {
+    await app.register(rateLimit, { max: 200, timeWindow: "1 minute" });
+  }
 
   await app.register(swagger, {
     openapi: {
@@ -84,11 +91,17 @@ export async function buildApp(): Promise<FastifyInstance> {
     return { status: "ok" };
   });
 
+  // Authentification, autorisation et journal d'audit (decore requireAuth/requireStaff).
+  await app.register(authPlugin);
+
   await app.register(zonesRoutes, { prefix: "/api/v1" });
   await app.register(simulationsRoutes, { prefix: "/api/v1" });
   await app.register(leadsRoutes, { prefix: "/api/v1" });
   await app.register(auditRequestsRoutes, { prefix: "/api/v1" });
   await app.register(analyticsRoutes, { prefix: "/api/v1" });
+  await app.register(authRoutes, { prefix: "/api/v1" });
+  await app.register(staffRoutes, { prefix: "/api/v1" });
+  await app.register(organizationsRoutes, { prefix: "/api/v1" });
 
   return app;
 }

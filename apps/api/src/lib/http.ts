@@ -13,5 +13,6 @@ export const errorResponses = {
   404: ErrorResponseSchema,
   409: ErrorResponseSchema,
   422: ErrorResponseSchema,
+  429: ErrorResponseSchema,
   503: ErrorResponseSchema,
 } as const;
