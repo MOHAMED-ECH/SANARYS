@@ -19,12 +19,16 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  // Ne declarer un content-type JSON que s'il y a effectivement un corps :
+  // Fastify rejette une requete annoncant du JSON avec un corps vide.
+  const headers: Record<string, string> = { ...((init?.headers as Record<string, string>) ?? {}) };
+  if (init?.body !== undefined && headers["content-type"] === undefined) {
+    headers["content-type"] = "application/json";
+  }
+
   const response = await fetch(`${BASE}${path}`, {
     ...init,
-    headers: {
-      "content-type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+    headers,
     credentials: "include",
   });
 

@@ -118,18 +118,18 @@ function allMatches(rules: Rule[], facts: SimulationFacts): Rule[] {
 /** Hypotheses affichees a l'utilisateur : ce que le calcul a suppose, en clair. */
 function buildAssumptions(facts: SimulationFacts): string[] {
   return [
-    `Effectif total considere : ${facts.totalHeadcount} salaries repartis sur ${facts.numberOfCompanies} entreprise(s).`,
-    `Niveau de risque declare : ${facts.riskLevel === "HIGH" ? "eleve" : facts.riskLevel === "MEDIUM" ? "modere" : "faible"}.`,
+    `Effectif total considéré : ${facts.totalHeadcount} salariés répartis sur ${facts.numberOfCompanies} entreprise(s).`,
+    `Niveau de risque déclaré : ${facts.riskLevel === "HIGH" ? "élevé" : facts.riskLevel === "MEDIUM" ? "modéré" : "faible"}.`,
     facts.nightWork
-      ? "Presence de travail de nuit prise en compte dans le dimensionnement."
-      : "Aucun travail de nuit declare.",
+      ? "Présence de travail de nuit prise en compte dans le dimensionnement."
+      : "Aucun travail de nuit déclaré.",
     facts.hasInfirmary
-      ? "Une infirmerie existe deja sur site."
-      : "Aucune infirmerie existante declaree sur la zone.",
+      ? "Une infirmerie existe déjà sur site."
+      : "Aucune infirmerie existante déclarée sur la zone.",
     facts.hasAmbulance
-      ? "Un moyen ambulancier existe deja sur site."
-      : "Aucun moyen ambulancier existant declare sur la zone.",
-    "Estimation etablie sans visite de site : la configuration definitive est arretee lors de l'audit terrain.",
+      ? "Un moyen ambulancier existe déjà sur site."
+      : "Aucun moyen ambulancier existant déclaré sur la zone.",
+    "Estimation établie sans visite de site : la configuration définitive est arrêtée lors de l'audit terrain.",
   ];
 }
 
@@ -147,13 +147,13 @@ export function evaluateSimulation(
 
   const vehicleRule = firstMatch(ruleSet.vehicleType, facts);
   if (!vehicleRule?.result) {
-    throw new Error("Ruleset invalide : aucune regle de type de vehicule applicable.");
+    throw new Error("Ruleset invalide : aucune règle de type de véhicule applicable.");
   }
 
   const moduleRules = allMatches(ruleSet.modules, facts);
   const coverageRule = firstMatch(ruleSet.coverage, facts);
   if (!coverageRule?.result) {
-    throw new Error("Ruleset invalide : aucune regle de couverture applicable.");
+    throw new Error("Ruleset invalide : aucune règle de couverture applicable.");
   }
 
   const costRule = firstMatch(ruleSet.costShareFormula, facts);
@@ -181,7 +181,7 @@ export function evaluateSimulation(
       targetLabel: COVERAGE_LABELS[coverageRule.result] ?? coverageRule.result,
       disclaimer:
         coverageRule.disclaimer ??
-        "Estimation illustrative, pas un calcul de routage reel. Confirmee lors de l'audit terrain.",
+        "Estimation illustrative, pas un calcul de routage réel. Confirmée lors de l'audit terrain.",
     },
     costShare: {
       ruleId: costRule.id,

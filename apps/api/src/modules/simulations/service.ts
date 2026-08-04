@@ -27,7 +27,7 @@ export class SimulationService {
       orderBy: { effectiveAt: "desc" },
     });
     if (!ruleSet) {
-      throw new NoActiveRuleSetError("Aucun jeu de regles actif n'est configure.");
+      throw new NoActiveRuleSetError("Aucun jeu de règles actif n'est configuré.");
     }
     return ruleSet;
   }
@@ -94,7 +94,7 @@ export class SimulationService {
     const parsed = SimulationInputCompleteSchema.safeParse(simulation.inputJson);
     if (!parsed.success) {
       throw new SimulationIncompleteError(
-        "Toutes les etapes du simulateur doivent etre renseignees avant le calcul.",
+        "Toutes les étapes du simulateur doivent être renseignées avant le calcul.",
       );
     }
 

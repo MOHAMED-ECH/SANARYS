@@ -229,7 +229,7 @@ describe("evaluateSimulation - tracabilite du snapshot", () => {
   it("echoue explicitement si le ruleset est incomplet", () => {
     const broken: RuleSetDefinition = { ...RULESET, vehicleType: [] };
     expect(() => evaluateSimulation(broken, facts(), { ruleSetVersion: "test" })).toThrow(
-      /type de vehicule/i,
+      /type de véhicule/i,
     );
   });
 });

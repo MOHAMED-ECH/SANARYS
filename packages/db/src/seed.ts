@@ -28,7 +28,7 @@ const SIMULATION_RULESET_V0 = {
       },
       result: "TYPE_C",
       rationale:
-        "Reanimation mobile recommandee au-dela de 500 salaries ou risque eleve - a confirmer par audit terrain.",
+        "Réanimation mobile recommandée au-delà de 500 salariés ou en cas de risque élevé — à confirmer par audit terrain.",
     },
     {
       id: "VEH-02",
@@ -37,7 +37,7 @@ const SIMULATION_RULESET_V0 = {
       author: "SANARYS-produit",
       when: "default",
       result: "TYPE_B",
-      rationale: "Soins d'urgence standard, ajustable apres audit.",
+      rationale: "Soins d'urgence standard, ajustable après audit terrain.",
     },
   ],
   modules: [
@@ -53,7 +53,7 @@ const SIMULATION_RULESET_V0 = {
         ],
       },
       result: "SUGGEST_NURSE",
-      rationale: "Effectif ou horaires justifiant une presence infirmiere quasi continue.",
+      rationale: "Effectif ou horaires justifiant une présence infirmière quasi continue.",
     },
     {
       id: "MOD-DOCTOR-01",
@@ -68,7 +68,7 @@ const SIMULATION_RULESET_V0 = {
       },
       result: "SUGGEST_DOCTOR",
       rationale:
-        "Risque eleve et effectif important justifiant une presence medicale reguliere - decision finale apres audit et validation medicale.",
+        "Risque élevé et effectif important justifiant une présence médicale régulière — décision finale après audit et validation médicale.",
     },
     {
       id: "MOD-INFIRMERIE-01",
@@ -83,7 +83,7 @@ const SIMULATION_RULESET_V0 = {
       },
       result: "SUGGEST_INFIRMARY",
       rationale:
-        "Absence d'infirmerie existante et groupement suffisant pour mutualiser un local dedie.",
+        "Absence d'infirmerie existante et groupement suffisant pour mutualiser un local dédié.",
     },
   ],
   coverage: [
@@ -95,9 +95,9 @@ const SIMULATION_RULESET_V0 = {
       when: "default",
       result: "TARGET_UNDER_10MIN",
       rationale:
-        "Objectif contractuel cible : moins de 10 minutes depuis chaque PME membre (source brochure). Estimation theorique, non routee.",
+        "Objectif contractuel cible : moins de 10 minutes depuis chaque PME membre (source brochure). Estimation théorique, non routée.",
       disclaimer:
-        "Estimation illustrative, pas un calcul de routage reel. Le routage reel est etabli lors de l'audit terrain.",
+        "Estimation illustrative, pas un calcul de routage réel. Le routage réel est établi lors de l'audit terrain.",
     },
   ],
   costShareFormula: [
@@ -109,7 +109,7 @@ const SIMULATION_RULESET_V0 = {
       when: "default",
       formula: "hybrid_40_fixed_60_headcount",
       rationale:
-        "Formule hybride par defaut : 40% part fixe egale entre PME + 60% proportionnel a l'effectif. Configurable par le groupement. Fourchette indicative uniquement, jamais un prix ferme.",
+        "Formule hybride par défaut : 40 % en part fixe égale entre PME + 60 % proportionnel à l'effectif. Configurable par le groupement. Fourchette indicative uniquement, jamais un prix ferme.",
     },
   ],
 };

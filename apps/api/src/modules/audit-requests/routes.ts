@@ -40,8 +40,8 @@ export const auditRequestsRoutes: FastifyPluginAsyncZod = async (app) => {
           leadId,
           type: "AUDIT_REQUESTED",
           message: preferredDate
-            ? `Audit terrain demande (date souhaitee : ${new Date(preferredDate).toLocaleDateString("fr-FR")}).`
-            : "Audit terrain demande.",
+            ? `Audit terrain demandé (date souhaitée : ${new Date(preferredDate).toLocaleDateString("fr-FR")}).`
+            : "Audit terrain demandé.",
         },
       });
 

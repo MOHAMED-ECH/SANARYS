@@ -66,7 +66,7 @@ export const simulationsRoutes: FastifyPluginAsyncZod = async (app) => {
     async (request, reply) => {
       const { step, data } = request.body;
       if (!VALID_STEPS.includes(step)) {
-        return reply.code(400).send({ message: "Etape inconnue.", code: "UNKNOWN_STEP" });
+        return reply.code(400).send({ message: "Étape inconnue.", code: "UNKNOWN_STEP" });
       }
       try {
         await service.patchStep(request.params.id, step, data);
@@ -105,7 +105,7 @@ export const simulationsRoutes: FastifyPluginAsyncZod = async (app) => {
       } catch (error) {
         if (error instanceof SimulationNotFoundError) {
           // Lien invalide ou expire : reponse identique pour ne rien divulguer.
-          return reply.code(404).send({ message: "Lien de reprise invalide ou expire." });
+          return reply.code(404).send({ message: "Lien de reprise invalide ou expiré." });
         }
         throw error;
       }
@@ -161,7 +161,7 @@ export const simulationsRoutes: FastifyPluginAsyncZod = async (app) => {
       if (!simulation || simulation.status !== "COMPLETED" || !simulation.resultJson) {
         return reply
           .code(404)
-          .send({ message: "Aucun recapitulatif disponible pour cette simulation." });
+          .send({ message: "Aucun récapitulatif disponible pour cette simulation." });
       }
 
       const reference = `SIM-${simulation.id.slice(-8).toUpperCase()}`;

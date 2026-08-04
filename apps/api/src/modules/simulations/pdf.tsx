@@ -72,20 +72,20 @@ const styles = StyleSheet.create({
 });
 
 const MODULE_LABELS: Record<string, string> = {
-  NURSE: "Infirmier(ere) permanent(e)",
-  DOCTOR: "Medecin dedie sur site",
-  INFIRMARY: "Infirmerie centrale amenagee",
+  NURSE: "Infirmier(ère) permanent(e)",
+  DOCTOR: "Médecin dédié sur site",
+  INFIRMARY: "Infirmerie centrale aménagée",
 };
 
 const VEHICLE_LABELS: Record<string, string> = {
-  TYPE_B: "Ambulance type B - soins d'urgence",
-  TYPE_C: "Ambulance type C - reanimation mobile",
+  TYPE_B: "Ambulance type B — soins d'urgence",
+  TYPE_C: "Ambulance type C — réanimation mobile",
 };
 
 const RISK_LABELS: Record<string, string> = {
   LOW: "Faible",
-  MEDIUM: "Modere",
-  HIGH: "Eleve",
+  MEDIUM: "Modéré",
+  HIGH: "Élevé",
 };
 
 interface Props {
@@ -113,24 +113,24 @@ function SimulationSummary({ reference, input, result }: Props) {
 
   return (
     <Document
-      title={`SANARYS - Recapitulatif de simulation CSPS ${reference}`}
+      title={`SANARYS - Récapitulatif de simulation CSPS ${reference}`}
       author="SANARYS"
-      subject="Simulation indicative de dispositif CSPS - document non contractuel"
+      subject="Simulation indicative de dispositif CSPS — document non contractuel"
     >
       <Page size="A4" style={styles.page}>
         <View style={styles.header} fixed>
           <Text style={styles.brand}>SANARYS</Text>
-          <Text style={styles.brandSub}>Sante operationnelle mutualisee des zones industrielles</Text>
+          <Text style={styles.brandSub}>Santé opérationnelle mutualisée des zones industrielles</Text>
         </View>
 
-        <Text style={styles.title}>Recapitulatif de simulation CSPS</Text>
+        <Text style={styles.title}>Récapitulatif de simulation CSPS</Text>
         <Text style={styles.meta}>
-          Reference : {reference} · Genere le {dateLabel} · Moteur de regles version{" "}
+          Référence : {reference} · Généré le {dateLabel} · Moteur de règles version{" "}
           {result.ruleSetVersion}
         </Text>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Perimetre declare</Text>
+          <Text style={styles.sectionTitle}>Périmètre déclaré</Text>
           <View style={styles.row}>
             <Text style={styles.label}>Zone industrielle</Text>
             <Text style={styles.value}>
@@ -138,7 +138,7 @@ function SimulationSummary({ reference, input, result }: Props) {
             </Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Entreprises concernees</Text>
+            <Text style={styles.label}>Entreprises concernées</Text>
             <Text style={styles.value}>{input.companies?.numberOfCompanies ?? "-"}</Text>
           </View>
           <View style={styles.row}>
@@ -146,7 +146,7 @@ function SimulationSummary({ reference, input, result }: Props) {
             <Text style={styles.value}>{input.companies?.totalHeadcount ?? "-"} salaries</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Niveau de risque declare</Text>
+            <Text style={styles.label}>Niveau de risque déclaré</Text>
             <Text style={styles.value}>
               {input.activity ? (RISK_LABELS[input.activity.riskLevel] ?? input.activity.riskLevel) : "-"}
             </Text>
@@ -164,24 +164,24 @@ function SimulationSummary({ reference, input, result }: Props) {
                 input.existingSetup?.existingStaff && input.existingSetup.existingStaff !== "NONE"
                   ? input.existingSetup.existingStaff === "NURSE"
                     ? "infirmier"
-                    : "medecin"
+                    : "médecin"
                   : null,
               ]
                 .filter(Boolean)
-                .join(", ") || "aucun declare"}
+                .join(", ") || "aucun déclaré"}
             </Text>
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Configuration indicative proposee</Text>
+          <Text style={styles.sectionTitle}>Configuration indicative proposée</Text>
           <View style={styles.card}>
             <Text style={styles.cardTitle}>
               Module socle : {VEHICLE_LABELS[result.vehicleType.code] ?? result.vehicleType.code}
             </Text>
             <Text>{result.vehicleType.rationale}</Text>
             <Text style={{ fontSize: 7, marginTop: 3, color: palette.slate }}>
-              Regle appliquee : {result.vehicleType.ruleId}
+              Règle appliquée : {result.vehicleType.ruleId}
             </Text>
           </View>
 
@@ -189,39 +189,39 @@ function SimulationSummary({ reference, input, result }: Props) {
             result.suggestedModules.map((module) => (
               <View style={styles.card} key={module.ruleId}>
                 <Text style={styles.cardTitle}>
-                  Module suggere : {MODULE_LABELS[module.code] ?? module.code}
+                  Module suggéré : {MODULE_LABELS[module.code] ?? module.code}
                 </Text>
                 <Text>{module.rationale}</Text>
                 <Text style={{ fontSize: 7, marginTop: 3, color: palette.slate }}>
-                  Regle appliquee : {module.ruleId}
+                  Règle appliquée : {module.ruleId}
                 </Text>
               </View>
             ))
           ) : (
             <Text>
-              Aucun module optionnel n'est suggere par le moteur sur la base des elements declares.
-              L'audit terrain peut faire evoluer cette recommandation.
+              Aucun module optionnel n'est suggéré par le moteur sur la base des éléments déclarés.
+              L'audit terrain peut faire évoluer cette recommandation.
             </Text>
           )}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Couverture visee</Text>
+          <Text style={styles.sectionTitle}>Couverture visée</Text>
           <Text style={{ color: palette.navy, fontWeight: "bold" }}>{result.coverage.targetLabel}</Text>
           <Text style={{ marginTop: 3 }}>{result.coverage.rationale}</Text>
           <Text style={{ marginTop: 3, fontStyle: "italic" }}>{result.coverage.disclaimer}</Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Cle de repartition indicative</Text>
+          <Text style={styles.sectionTitle}>Clé de répartition indicative</Text>
           <Text>{result.costShare.rationale}</Text>
           <Text style={{ fontSize: 7, marginTop: 3 }}>
-            Formule : {result.costShare.formula} · Regle : {result.costShare.ruleId}
+            Formule : {result.costShare.formula} · Règle : {result.costShare.ruleId}
           </Text>
         </View>
 
         <View style={styles.section} break>
-          <Text style={styles.sectionTitle}>Hypotheses retenues</Text>
+          <Text style={styles.sectionTitle}>Hypothèses retenues</Text>
           {result.assumptions.map((assumption, index) => (
             <Bullet key={index}>{assumption}</Bullet>
           ))}
@@ -230,33 +230,33 @@ function SimulationSummary({ reference, input, result }: Props) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Ce que cette simulation ne couvre pas</Text>
           <Bullet>Aucun prix ferme ni engagement tarifaire : seules des fourchettes indicatives.</Bullet>
-          <Bullet>Aucun calcul de routage reel : les temps affiches sont des objectifs, pas des mesures.</Bullet>
-          <Bullet>Aucune evaluation medicale ni recommandation clinique.</Bullet>
-          <Bullet>Aucune verification de conformite reglementaire de votre site.</Bullet>
-          <Bullet>La configuration definitive est arretee apres audit terrain contradictoire.</Bullet>
+          <Bullet>Aucun calcul de routage réel : les temps affichés sont des objectifs, pas des mesures.</Bullet>
+          <Bullet>Aucune évaluation médicale ni recommandation clinique.</Bullet>
+          <Bullet>Aucune vérification de conformité réglementaire de votre site.</Bullet>
+          <Bullet>La configuration définitive est arrêtée après audit terrain contradictoire.</Bullet>
         </View>
 
         <View style={styles.notice}>
           <Text style={styles.noticeTitle}>Document non contractuel</Text>
           <Text>
-            Ce recapitulatif est une estimation indicative produite automatiquement a partir des
-            elements que vous avez declares. Il ne constitue ni un devis, ni une offre, ni un
-            engagement contractuel de SANARYS. Seule une proposition technique et financiere signee,
-            etablie apres audit terrain, engage les parties.
+            Ce récapitulatif est une estimation indicative produite automatiquement à partir des
+            éléments que vous avez déclarés. Il ne constitue ni un devis, ni une offre, ni un
+            engagement contractuel de SANARYS. Seule une proposition technique et financière signée,
+            établie après audit terrain, engage les parties.
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Prochaine etape</Text>
+          <Text style={styles.sectionTitle}>Prochaine étape</Text>
           <Text>
-            Demandez un audit terrain gratuit : nos equipes cartographient la zone, evaluent les
+            Demandez un audit terrain gratuit : nos équipes cartographient la zone, évaluent les
             risques et identifient l'emplacement optimal du point d'ancrage. Contact : contact@sanarys.ma
           </Text>
         </View>
 
         <View style={styles.footer} fixed>
           <Text>
-            SANARYS · Recapitulatif de simulation {reference} · Moteur v{result.ruleSetVersion}
+            SANARYS · Récapitulatif de simulation {reference} · Moteur v{result.ruleSetVersion}
           </Text>
           <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber}/${totalPages}`} />
         </View>

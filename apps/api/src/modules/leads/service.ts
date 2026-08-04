@@ -129,8 +129,8 @@ export class LeadService {
         leadId: lead.id,
         type: existing ? "LEAD_UPDATED" : "LEAD_CREATED",
         message: existing
-          ? "Nouvelle soumission rattachee au lead existant (dedoublonnage)."
-          : `Lead cree depuis ${payload.source ?? "le site public"}.`,
+          ? "Nouvelle soumission rattachée au lead existant (dédoublonnage)."
+          : `Lead créé depuis ${payload.source ?? "le site public"}.`,
       },
     });
 
