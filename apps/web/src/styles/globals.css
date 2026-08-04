@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --focus-ring: 0 0 0 3px rgba(14, 110, 122, 0.35);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  body {
+    @apply bg-mist-50 font-body text-slate-600 antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04";
+  }
+
+  /* Le focus doit rester visible partout : parcours clavier obligatoire. */
+  :focus-visible {
+    outline: 2px solid theme("colors.petrol.600");
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-heading text-slate-900;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Support RTL : la direction est portee par <html dir>, les composants
+     utilisent des proprietes logiques (ms-/me-/ps-/pe-) plutot que left/right. */
+  [dir="rtl"] body {
+    @apply font-arabic;
+  }
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-content px-5 md:px-8;
+  }
+
+  .eyebrow {
+    @apply font-heading text-xs font-bold uppercase tracking-[0.18em] text-petrol-600;
+  }
+
+  /* Le cuivre est une signature : filet fin, jamais un aplat de section. */
+  .accent-rule {
+    @apply inline-block h-[3px] w-10 rounded-full bg-copper-500;
+  }
+
+  .surface-card {
+    @apply rounded-lg border border-slate-900/5 bg-mist-white shadow-card;
+  }
+
+  .link-underline {
+    @apply underline decoration-copper-300 decoration-2 underline-offset-4 transition-colors hover:decoration-copper-500;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Lien d'evitement : premier element focusable de la page. */
+  .skip-link {
+    @apply absolute left-4 top-4 z-50 -translate-y-24 rounded-md bg-navy-950 px-4 py-2 text-sm font-semibold text-mist-white transition-transform focus:translate-y-0;
+  }
+}
