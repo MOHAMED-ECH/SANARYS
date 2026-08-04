@@ -19,6 +19,9 @@ Le produit sert le modèle **CSPS** (Centre de Services Partagés Sanitaires) : 
 
 Prérequis : Node 22 (voir `.nvmrc`) et PostgreSQL 16.
 
+> Procédure détaillée, dépannage et import de la branche depuis un bundle git :
+> [`docs/demarrage-local.md`](docs/demarrage-local.md).
+
 ```bash
 npm install
 cp .env.example .env
