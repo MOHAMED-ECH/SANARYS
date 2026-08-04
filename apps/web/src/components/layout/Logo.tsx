@@ -4,7 +4,7 @@ import clsx from "clsx";
  * Marque SANARYS. Le monogramme evoque un point d'ancrage rayonnant :
  * un noyau (le CSPS) et une onde de couverture (la zone desservie).
  */
-export function Logo({ onDark = false, className }: { onDark?: boolean; className?: string }) {
+export function Logo({ onDark = false, className }: { onDark?: boolean | undefined; className?: string | undefined }) {
   return (
     <span className={clsx("inline-flex items-center gap-2.5", className)}>
       <svg width="30" height="30" viewBox="0 0 32 32" fill="none" aria-hidden="true">

@@ -7,8 +7,16 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
+
+    // Configuration stricte imposee par le guide d'architecture (section 8.1).
     "strict": true,
     "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "useUnknownInCatchVariables": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "declaration": true,

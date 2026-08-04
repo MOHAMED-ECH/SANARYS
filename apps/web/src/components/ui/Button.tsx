@@ -22,9 +22,9 @@ const SIZES: Record<Size, string> = {
 };
 
 interface CommonProps {
-  variant?: Variant;
-  size?: Size;
-  className?: string;
+  variant?: Variant | undefined;
+  size?: Size | undefined;
+  className?: string | undefined;
   children: ReactNode;
 }
 

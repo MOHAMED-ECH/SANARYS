@@ -73,8 +73,8 @@ function Panel({
 }: {
   loading: boolean;
   error: string | null;
-  empty?: boolean;
-  emptyMessage?: string;
+  empty?: boolean | undefined;
+  emptyMessage?: string | undefined;
   children: React.ReactNode;
 }) {
   if (loading) {
@@ -306,7 +306,7 @@ function KpiGrid({ kpi }: { kpi: Record<string, number | string | boolean> }) {
   );
 }
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string | undefined }) {
   return (
     <div className="surface-card p-5">
       <p className="font-heading text-xs font-bold uppercase tracking-wider text-petrol-600">

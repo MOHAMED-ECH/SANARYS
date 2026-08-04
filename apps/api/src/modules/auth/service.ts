@@ -90,7 +90,7 @@ export class AuthService {
    * connexion revoque les sessions precedentes du meme utilisateur si
    * demande (deconnexion des autres appareils).
    */
-  async createSession(userId: string, meta: { ip?: string; userAgent?: string }) {
+  async createSession(userId: string, meta: { ip?: string | undefined; userAgent?: string | undefined }) {
     const token = generateToken();
     const session = await this.prisma.session.create({
       data: {

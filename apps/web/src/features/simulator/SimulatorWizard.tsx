@@ -42,7 +42,7 @@ export function SimulatorWizard({
   initialSimulationId,
 }: {
   zones: IndustrialZoneDto[];
-  initialSimulationId?: string;
+  initialSimulationId?: string | undefined;
 }) {
   const simulator = useSimulator(initialSimulationId);
   const [draft, setDraft] = useState<Record<string, unknown>>({});

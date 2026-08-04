@@ -113,14 +113,16 @@ export class LeadService {
       },
       update: {
         contactName: payload.contactName,
-        contactRole: payload.contactRole ?? undefined,
-        contactPhone: payload.contactPhone ?? undefined,
-        preferredChannel: payload.preferredChannel ?? undefined,
-        industrialZoneId: payload.industrialZoneId ?? undefined,
-        simulationId: payload.simulationId ?? undefined,
+        ...(payload.contactRole ? { contactRole: payload.contactRole } : {}),
+        ...(payload.contactPhone ? { contactPhone: payload.contactPhone } : {}),
+        ...(payload.preferredChannel ? { preferredChannel: payload.preferredChannel } : {}),
+        ...(payload.industrialZoneId ? { industrialZoneId: payload.industrialZoneId } : {}),
+        ...(payload.simulationId ? { simulationId: payload.simulationId } : {}),
         score: effectiveScore,
         priority,
-        ...(payload.consentMarketing ? { consentMarketing: true, consentTimestamp, consentVersion: payload.consentVersion } : {}),
+        ...(payload.consentMarketing
+          ? { consentMarketing: true, consentTimestamp, consentVersion: payload.consentVersion }
+          : {}),
       },
     });
 

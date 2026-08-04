@@ -35,7 +35,7 @@ export function CspsZoneDiagram({
 }: {
   /** 0 = entreprises isolees, 1 = ancrage + rayon, 2 = partage des couts */
   step: 0 | 1 | 2;
-  className?: string;
+  className?: string | undefined;
 }) {
   const reduced = useReducedMotion();
 
@@ -177,7 +177,7 @@ export function CspsZoneDiagram({
 }
 
 /** Version autonome qui fait defiler les trois etapes, utilisee sur l'accueil. */
-export function CspsZoneDiagramAuto({ className }: { className?: string }) {
+export function CspsZoneDiagramAuto({ className }: { className?: string | undefined }) {
   const reduced = useReducedMotion();
   const [step, setStep] = useState<0 | 1 | 2>(reduced ? 2 : 0);
 

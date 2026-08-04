@@ -16,10 +16,10 @@ export function Section({
   children,
   id,
 }: {
-  tone?: Tone;
-  className?: string;
+  tone?: Tone | undefined;
+  className?: string | undefined;
   children: ReactNode;
-  id?: string;
+  id?: string | undefined;
 }) {
   return (
     <section id={id} className={clsx(TONES[tone], "py-16 md:py-24", className)}>
@@ -35,11 +35,11 @@ export function SectionHeader({
   align = "left",
   onNavy = false,
 }: {
-  eyebrow?: string;
+  eyebrow?: string | undefined;
   title: string;
-  lead?: string;
-  align?: "left" | "center";
-  onNavy?: boolean;
+  lead?: string | undefined;
+  align?: "left" | "center" | undefined;
+  onNavy?: boolean | undefined;
 }) {
   return (
     <header

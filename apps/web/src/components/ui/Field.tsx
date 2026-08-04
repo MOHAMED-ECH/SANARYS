@@ -16,9 +16,9 @@ function Wrapper({
   children,
 }: {
   label: string;
-  hint?: string;
-  error?: string;
-  required?: boolean;
+  hint?: string | undefined;
+  error?: string | undefined;
+  required?: boolean | undefined;
   htmlFor: string;
   children: ReactNode;
 }) {
@@ -55,7 +55,11 @@ export function TextField({
   error,
   required,
   ...props
-}: { label: string; hint?: string; error?: string } & InputHTMLAttributes<HTMLInputElement>) {
+}: {
+  label: string;
+  hint?: string | undefined;
+  error?: string | undefined;
+} & InputHTMLAttributes<HTMLInputElement>) {
   const id = useId();
   return (
     <Wrapper label={label} hint={hint} error={error} required={required} htmlFor={id}>
@@ -77,7 +81,11 @@ export function SelectField({
   required,
   children,
   ...props
-}: { label: string; hint?: string; error?: string } & SelectHTMLAttributes<HTMLSelectElement>) {
+}: {
+  label: string;
+  hint?: string | undefined;
+  error?: string | undefined;
+} & SelectHTMLAttributes<HTMLSelectElement>) {
   const id = useId();
   return (
     <Wrapper label={label} hint={hint} error={error} required={required} htmlFor={id}>
@@ -103,10 +111,10 @@ export function ChoiceGroup({
   columns = 2,
 }: {
   legend: string;
-  hint?: string;
-  error?: string;
+  hint?: string | undefined;
+  error?: string | undefined;
   children: ReactNode;
-  columns?: 1 | 2 | 3;
+  columns?: 1 | 2 | 3 | undefined;
 }) {
   return (
     <fieldset>
@@ -139,12 +147,12 @@ export function ChoiceCard({
   onChange,
   name,
 }: {
-  type?: "radio" | "checkbox";
+  type?: "radio" | "checkbox" | undefined;
   label: string;
-  hint?: string;
+  hint?: string | undefined;
   checked: boolean;
   onChange: () => void;
-  name?: string;
+  name?: string | undefined;
 }) {
   return (
     <label
@@ -186,8 +194,8 @@ export function ToggleField({
   onChange,
 }: {
   label: string;
-  hint?: string;
-  error?: string;
+  hint?: string | undefined;
+  error?: string | undefined;
   checked: boolean | undefined;
   onChange: (value: boolean) => void;
 }) {

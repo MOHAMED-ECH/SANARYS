@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import React from "react";
 import type { SimulationInput, SimulationResult } from "@sanarys/schemas";
+import type { SimulationSummaryDocument, SummaryGeneratorPort } from "../domain/ports.js";
 
 /**
  * Recapitulatif PDF de simulation (cahier des charges section 8.4).
@@ -265,6 +266,23 @@ function SimulationSummary({ reference, input, result }: Props) {
   );
 }
 
-export async function renderSimulationPdf(props: Props): Promise<Buffer> {
-  return renderToBuffer(<SimulationSummary {...props} />);
+/**
+ * Implementation du port de generation de recapitulatif.
+ *
+ * Le domaine ne connait ni React, ni le format PDF : il demande un
+ * document, l'infrastructure decide comment il est produit.
+ */
+export class PdfSummaryGenerator implements SummaryGeneratorPort {
+  async generate(params: {
+    reference: string;
+    input: SimulationInput;
+    result: SimulationResult;
+  }): Promise<SimulationSummaryDocument> {
+    const bytes = await renderToBuffer(<SimulationSummary {...params} />);
+    return {
+      bytes,
+      mimeType: "application/pdf",
+      fileName: `SANARYS-${params.reference}.pdf`,
+    };
+  }
 }
