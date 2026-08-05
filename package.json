@@ -9,6 +9,9 @@
     "tests/*"
   ],
   "scripts": {
+    "postinstall": "npm run prisma:generate -w @sanarys/db",
+    "setup": "node scripts/setup-env.mjs",
+    "doctor": "node scripts/doctor.mjs",
     "dev:api": "npm run dev -w @sanarys/api",
     "dev:web": "npm run dev -w @sanarys/web",
     "build": "npm run build --workspaces --if-present",
@@ -18,6 +21,7 @@
     "test:e2e": "npm run test -w @sanarys/e2e",
     "db:start": "bash scripts/db-start.sh",
     "db:create": "bash scripts/db-create.sh",
+    "db:generate": "npm run prisma:generate -w @sanarys/db",
     "db:migrate": "npm run prisma:migrate -w @sanarys/db",
     "db:seed": "npm run seed -w @sanarys/db"
   },

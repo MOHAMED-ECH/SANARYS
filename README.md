@@ -23,8 +23,8 @@ Prérequis : Node 22 (voir `.nvmrc`) et PostgreSQL 16.
 > [`docs/demarrage-local.md`](docs/demarrage-local.md).
 
 ```bash
-npm install
-cp .env.example .env
+npm install       # installe et génère le client Prisma
+npm run setup     # crée le .env local (n'écrase jamais un fichier existant)
 ```
 
 **Base de données** — deux options au choix :
@@ -33,10 +33,13 @@ cp .env.example .env
 # Option A : Docker (recommandé si disponible)
 docker compose up -d postgres
 
-# Option B : PostgreSQL installé nativement
-npm run db:start      # démarre le cluster local (Debian/Ubuntu)
+# Option B : PostgreSQL installé nativement — Debian/Ubuntu uniquement
+npm run db:start      # démarre le cluster local
 npm run db:create     # crée le rôle et la base sanarys_dev
 ```
+
+Ces deux scripts sont des raccourcis Debian/Ubuntu. Sous Windows et macOS,
+créez le rôle et la base à la main : [`docs/demarrage-local.md`](docs/demarrage-local.md#3-installation).
 
 Puis :
 
@@ -44,6 +47,17 @@ Puis :
 npm run db:migrate    # applique les migrations
 npm run db:seed       # zones, jeu de règles v0, organisations et comptes de démo
 ```
+
+**Vérifier avant de lancer** :
+
+```bash
+npm run doctor
+```
+
+`doctor` contrôle Node, les dépendances, le client Prisma, le `.env`, la
+joignabilité de PostgreSQL, l'état des migrations et du seed, la cohérence des
+URL front/API et l'occupation des ports. Chaque échec affiche la commande qui
+le corrige. Il fonctionne à l'identique sous Windows, macOS et Linux.
 
 **Lancer l'application** (deux terminaux) :
 

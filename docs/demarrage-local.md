@@ -6,7 +6,13 @@ Ce document couvre deux choses : récupérer la branche de développement dans u
 
 Si vous avez déjà un dossier `SANARYS` cloné (contenant la brochure, le cahier des charges et le guide d'architecture), **ne le reclonez pas**. Un bundle git est un dépôt complet dans un seul fichier : commits, messages, auteurs et signatures sont préservés à l'identique.
 
-Placez `sanarys-premium-app.bundle` à côté de votre dossier, par exemple sur le Bureau, puis :
+Placez le bundle à côté de votre dossier, par exemple sur le Bureau, puis :
+
+> **Attention au nom du fichier.** Certains navigateurs retirent les tirets au
+> téléchargement : `sanarys-premium-app.bundle` devient `sanaryspremiumapp.bundle`.
+> Si `git fetch` répond *does not appear to be a git repository*, c'est presque
+> toujours le nom réel du fichier qui diffère de celui de la commande. Vérifiez
+> avec `dir *.bundle` (PowerShell) ou `ls *.bundle`.
 
 ```bash
 cd ~/Desktop/SANARYS          # adaptez le chemin
@@ -76,9 +82,11 @@ Le bundle n'est plus nécessaire une fois cette étape faite.
 ## 3. Installation
 
 ```bash
-npm install
-cp .env.example .env
+npm install       # installe les dépendances et génère le client Prisma
+npm run setup     # crée le .env local, sans jamais écraser un fichier existant
 ```
+
+Ces deux commandes sont identiques sous PowerShell, cmd, bash et zsh.
 
 Ouvrez `.env` et vérifiez `DATABASE_URL`. Par défaut :
 
@@ -95,7 +103,16 @@ psql -d sanarys_dev -c "CREATE ROLE sanarys WITH LOGIN PASSWORD 'sanarys' CREATE
 psql -d sanarys_dev -c "ALTER DATABASE sanarys_dev OWNER TO sanarys;"
 ```
 
-Sur Windows, utilisez pgAdmin ou `psql -U postgres` avec les mêmes commandes. Avec Docker, la base et le rôle sont créés automatiquement.
+Sous Windows, ouvrez « SQL Shell (psql) » depuis le menu Démarrer, connectez-vous
+en `postgres` avec le mot de passe choisi à l'installation, puis :
+
+```sql
+CREATE ROLE sanarys WITH LOGIN PASSWORD 'sanarys' CREATEDB;
+CREATE DATABASE sanarys_dev OWNER sanarys;
+```
+
+Si l'installeur PostgreSQL a imposé un autre mot de passe, reportez-le dans
+`DATABASE_URL`. Avec Docker, le rôle et la base sont créés automatiquement.
 
 Appliquez ensuite le schéma et les données de démonstration :
 
@@ -103,6 +120,21 @@ Appliquez ensuite le schéma et les données de démonstration :
 npm run db:migrate
 npm run db:seed
 ```
+
+## 3 bis. En cas de doute : `npm run doctor`
+
+```bash
+npm run doctor
+```
+
+Le diagnostic répond à une seule question — qu'est-ce qui empêche l'application
+de démarrer sur cette machine ? Il contrôle la version de Node, les dépendances,
+la génération du client Prisma, la présence du `.env`, la joignabilité de
+PostgreSQL, l'application des migrations et du seed, la cohérence des URL entre
+le site et l'API, et l'occupation des ports 3000 et 4000.
+
+Chaque ligne en échec est suivie de la commande exacte qui la corrige. Lancez-le
+avant d'ouvrir un ticket : dans la grande majorité des cas, il désigne la cause.
 
 ## 4. Lancer l'application
 
@@ -151,6 +183,21 @@ npm run test:e2e
 5. `http://localhost:4000/docs` — documentation OpenAPI de l'API
 
 ## 7. Problèmes courants
+
+Avant toute chose : `npm run doctor`. Les cas ci-dessous en sont la traduction
+détaillée.
+
+**`@prisma/client did not initialize yet`**
+Le client Prisma n'a pas été généré. `npm run db:generate`. Il l'est normalement
+automatiquement à l'`npm install` (script `postinstall`).
+
+**L'API s'arrête au démarrage sur `DATABASE_URL: Required`**
+Le fichier `.env` n'existe pas, ou n'a pas été lu. `npm run setup`, puis relancez.
+
+**Erreur CORS dans la console du navigateur**
+`NEXT_PUBLIC_API_BASE_URL` force le navigateur à appeler l'API en direct. En
+local, laissez cette variable commentée : les appels passent alors par le proxy
+`/api/v1` de Next, sur la même origine.
 
 **`Can't reach database server at localhost:5432`**
 PostgreSQL n'est pas démarré. macOS : `brew services start postgresql@16`. Linux : `sudo systemctl start postgresql`. Docker : `docker compose up -d postgres`.
