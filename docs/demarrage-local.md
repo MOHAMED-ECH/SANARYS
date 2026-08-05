@@ -199,6 +199,13 @@ Le fichier `.env` n'existe pas, ou n'a pas été lu. `npm run setup`, puis relan
 local, laissez cette variable commentée : les appels passent alors par le proxy
 `/api/v1` de Next, sur la même origine.
 
+**Un `.env` créé avant une mise à jour du dépôt**
+`npm run setup` ne réécrit jamais un `.env` existant — il contient vos valeurs.
+Il compare en revanche vos clés à celles de `.env.example` et signale celles qui
+manquent, celles devenues optionnelles et celles qu'il ne connaît plus. Si un
+`.env` ancien pose problème, le plus simple reste de le renommer en `.env.old`
+puis de relancer `npm run setup` et de reporter vos valeurs à la main.
+
 **`Can't reach database server at localhost:5432`**
 PostgreSQL n'est pas démarré. macOS : `brew services start postgresql@16`. Linux : `sudo systemctl start postgresql`. Docker : `docker compose up -d postgres`.
 
