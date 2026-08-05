@@ -6,10 +6,10 @@
   "main": "src/client.ts",
   "types": "src/client.ts",
   "scripts": {
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:deploy": "prisma migrate deploy",
-    "seed": "tsx src/seed.ts",
+    "prisma:generate": "node scripts/with-env.mjs prisma generate",
+    "prisma:migrate": "node scripts/with-env.mjs prisma migrate dev",
+    "prisma:deploy": "node scripts/with-env.mjs prisma migrate deploy",
+    "seed": "node scripts/with-env.mjs tsx src/seed.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
@@ -22,6 +22,6 @@
     "typescript": "^5.6.3"
   },
   "prisma": {
-    "seed": "tsx src/seed.ts"
+    "seed": "node scripts/with-env.mjs tsx src/seed.ts"
   }
 }
