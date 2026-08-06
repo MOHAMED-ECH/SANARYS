@@ -10,6 +10,16 @@ export const SESSION_COOKIE = "sanarys_session";
 export const CSRF_COOKIE = "sanarys_csrf";
 export const CSRF_HEADER = "x-sanarys-csrf";
 
+/**
+ * Defi de second facteur, entre le mot de passe verifie et la session ouverte.
+ *
+ * Il voyage en cookie httpOnly plutot que dans le corps de la reponse : le
+ * JavaScript de la page n'a aucune raison de pouvoir le lire, et un XSS ne
+ * doit pas pouvoir le rejouer. Sa duree de vie est courte, alignee sur celle
+ * du defi en base.
+ */
+export const MFA_CHALLENGE_COOKIE = "sanarys_mfa";
+
 const MAX_AGE_SECONDS = SESSION_TTL_MS / 1000;
 
 export function setSessionCookies(
@@ -37,6 +47,27 @@ export function setSessionCookies(
     });
 }
 
+export function setMfaChallengeCookie(
+  reply: FastifyReply,
+  token: string,
+  options: { secure: boolean; maxAgeSeconds: number },
+): void {
+  reply.setCookie(MFA_CHALLENGE_COOKIE, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: options.secure,
+    path: "/",
+    maxAge: options.maxAgeSeconds,
+  });
+}
+
+export function clearMfaChallengeCookie(reply: FastifyReply): FastifyReply {
+  return reply.clearCookie(MFA_CHALLENGE_COOKIE, { path: "/" });
+}
+
 export function clearSessionCookies(reply: FastifyReply): FastifyReply {
-  return reply.clearCookie(SESSION_COOKIE, { path: "/" }).clearCookie(CSRF_COOKIE, { path: "/" });
+  return reply
+    .clearCookie(SESSION_COOKIE, { path: "/" })
+    .clearCookie(CSRF_COOKIE, { path: "/" })
+    .clearCookie(MFA_CHALLENGE_COOKIE, { path: "/" });
 }

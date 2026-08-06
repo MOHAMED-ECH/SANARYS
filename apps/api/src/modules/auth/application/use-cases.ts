@@ -17,9 +17,12 @@ import {
   AccountUnavailableError,
   InvalidCredentialsError,
   InvalidInviteError,
+  InvalidMfaChallengeError,
+  InvalidMfaCodeError,
   InvalidResetTokenError,
 } from "../domain/errors.js";
 import type {
+  MfaChallengeRepository,
   PasswordHasher,
   SessionRepository,
   UserAccountRepository,
@@ -43,14 +46,35 @@ interface CoreDependencies {
   readonly audit: AuditTrailPort;
 }
 
-export interface LogInResult {
-  /** Jeton de session en clair : retourne une seule fois, seul le hash est persiste. */
-  readonly sessionToken: string;
-  readonly profile: UserProfile;
-}
+/**
+ * Issue d'une tentative de connexion.
+ *
+ * Deux formes, parce qu'un mot de passe correct n'ouvre plus forcement une
+ * session : quand le second facteur est actif, il ouvre un defi. La couche
+ * presentation doit traiter les deux cas, et le type l'y oblige.
+ */
+export type LogInResult =
+  | {
+      readonly kind: "session";
+      /** Jeton de session en clair : retourne une seule fois, seul le hash est persiste. */
+      readonly sessionToken: string;
+      readonly profile: UserProfile;
+    }
+  | {
+      readonly kind: "mfa_required";
+      /** Jeton de defi, court et a usage unique. */
+      readonly challengeToken: string;
+    };
+
+/** Duree de vie du defi de second facteur. */
+export const MFA_CHALLENGE_TTL_MS = 5 * 60 * 1000;
 
 export class LogInUseCase {
-  constructor(private readonly deps: CoreDependencies) {}
+  constructor(
+    private readonly deps: CoreDependencies & {
+      readonly challenges: MfaChallengeRepository;
+    },
+  ) {}
 
   async execute(command: {
     email: string;
@@ -95,6 +119,32 @@ export class LogInUseCase {
       await this.deps.users.updateLockout(user.id, CLEARED_LOCKOUT);
     }
 
+    // Second facteur actif : le mot de passe ne suffit pas. Aucune session
+    // n'est ouverte a ce stade — seulement un defi court, qui ne donne acces
+    // a rien d'autre qu'a la verification du code.
+    if (user.mfaEnabled) {
+      const challengeToken = this.deps.tokens.generate();
+
+      // Un nouveau defi annule les precedents : deux fenetres de connexion
+      // ouvertes en parallele ne doivent pas laisser deux defis valides.
+      await this.deps.challenges.deleteAllForUser(user.id);
+      await this.deps.challenges.create({
+        userId: user.id,
+        tokenHash: this.deps.tokens.hash(challengeToken),
+        ip: command.ip ?? null,
+        expiresAt: new Date(now.getTime() + MFA_CHALLENGE_TTL_MS),
+      });
+
+      await this.deps.audit.record({
+        actorUserId: user.id,
+        action: "auth.mfa_challenge_issued",
+        resourceType: "session",
+        ip: command.ip,
+      });
+
+      return { kind: "mfa_required", challengeToken };
+    }
+
     // Rotation : toute nouvelle connexion revoque les sessions precedentes.
     await this.deps.sessions.revokeAllForUser(user.id, now);
 
@@ -117,7 +167,7 @@ export class LogInUseCase {
     const profile = await this.deps.users.findProfile(user.id);
     if (!profile) throw new AccountUnavailableError();
 
-    return { sessionToken, profile };
+    return { kind: "session", sessionToken, profile };
   }
 
   /**
@@ -137,6 +187,88 @@ export class LogInUseCase {
       ip,
       metadata: { reason },
     });
+  }
+}
+
+/**
+ * Seconde etape de la connexion : un defi valide plus un code correct ouvrent
+ * la session que le mot de passe seul n'a pas ouverte.
+ *
+ * La verification du code est deleguee — ce cas d'usage ne connait ni TOTP ni
+ * codes de secours, seulement la regle « defi consomme, session ouverte ».
+ */
+export class CompleteMfaLogInUseCase {
+  constructor(
+    private readonly deps: Pick<
+      CoreDependencies,
+      "users" | "sessions" | "tokens" | "clock" | "audit"
+    > & {
+      readonly challenges: MfaChallengeRepository;
+      readonly verifyCode: (command: {
+        userId: string;
+        code: string;
+        ip?: string | undefined;
+      }) => Promise<boolean>;
+    },
+  ) {}
+
+  async execute(command: {
+    challengeToken: string;
+    code: string;
+    ip?: string | undefined;
+    userAgent?: string | undefined;
+  }): Promise<LogInResult & { kind: "session" }> {
+    const now = this.deps.clock.now();
+    const challenge = await this.deps.challenges.findPendingByTokenHash(
+      this.deps.tokens.hash(command.challengeToken),
+      now,
+    );
+
+    if (!challenge) throw new InvalidMfaChallengeError();
+
+    const ok = await this.deps.verifyCode({
+      userId: challenge.userId,
+      code: command.code,
+      ip: command.ip,
+    });
+
+    if (!ok) {
+      // Le defi n'est pas consomme : une faute de frappe ne doit pas obliger a
+      // ressaisir le mot de passe. Sa duree de vie courte borne les tentatives,
+      // et le limiteur de debit de la route borne leur cadence.
+      await this.deps.audit.record({
+        actorUserId: challenge.userId,
+        action: "auth.mfa_failure",
+        resourceType: "session",
+        ip: command.ip,
+      });
+      throw new InvalidMfaCodeError();
+    }
+
+    await this.deps.challenges.consume(challenge.id, now);
+    await this.deps.sessions.revokeAllForUser(challenge.userId, now);
+
+    const sessionToken = this.deps.tokens.generate();
+    await this.deps.sessions.create({
+      userId: challenge.userId,
+      tokenHash: this.deps.tokens.hash(sessionToken),
+      ip: command.ip ?? null,
+      userAgent: command.userAgent ?? null,
+      expiresAt: new Date(now.getTime() + SESSION_TTL_MS),
+    });
+
+    await this.deps.audit.record({
+      actorUserId: challenge.userId,
+      action: "auth.login_success",
+      resourceType: "session",
+      ip: command.ip,
+      metadata: { secondFactor: true },
+    });
+
+    const profile = await this.deps.users.findProfile(challenge.userId);
+    if (!profile) throw new AccountUnavailableError();
+
+    return { kind: "session", sessionToken, profile };
   }
 }
 

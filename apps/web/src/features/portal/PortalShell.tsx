@@ -6,13 +6,14 @@ import clsx from "clsx";
 import type { MeResponse } from "@sanarys/schemas";
 import { authApi, AuthError } from "@/lib/auth-api";
 
-export type PortalTab = "dashboard" | "contracts" | "reports" | "members";
+export type PortalTab = "dashboard" | "contracts" | "reports" | "members" | "security";
 
 const TABS: { key: PortalTab; label: string }[] = [
   { key: "dashboard", label: "Tableau de bord" },
   { key: "contracts", label: "Contrats" },
   { key: "reports", label: "Rapports" },
   { key: "members", label: "Membres" },
+  { key: "security", label: "Sécurité" },
 ];
 
 /**
@@ -165,6 +166,7 @@ export function PortalShell({
 function tabPath(tab: PortalTab) {
   if (tab === "contracts") return "contrats";
   if (tab === "reports") return "rapports";
+  if (tab === "security") return "securite";
   return "membres";
 }
 

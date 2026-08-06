@@ -33,6 +33,56 @@ export interface AuthenticatableUser extends UserAccount {
   readonly passwordHash: string | null;
   readonly status: string;
   readonly lockout: LockoutState;
+  readonly mfaEnabled: boolean;
+}
+
+/** Etat d'enrolement du second facteur pour un compte donne. */
+export interface MfaState {
+  readonly enabled: boolean;
+  /** Secret base32. Present des le debut de l'enrolement, avant activation. */
+  readonly secret: string | null;
+  readonly confirmedAt: Date | null;
+  /** Codes de secours encore utilisables. */
+  readonly remainingRecoveryCodes: number;
+}
+
+export interface MfaRepository {
+  findState(userId: string): Promise<MfaState | null>;
+  /** Enregistre un secret d'enrolement, sans activer le facteur. */
+  storeSecret(userId: string, secret: string): Promise<void>;
+  /** Active le facteur et remplace integralement les codes de secours. */
+  activate(userId: string, confirmedAt: Date, recoveryCodeHashes: string[]): Promise<void>;
+  /** Desactive le facteur, efface le secret et tous les codes de secours. */
+  deactivate(userId: string): Promise<void>;
+  /**
+   * Consomme un code de secours s'il existe et n'a pas deja servi.
+   * Retourne false sans rien modifier sinon.
+   */
+  consumeRecoveryCode(userId: string, codeHash: string, usedAt: Date): Promise<boolean>;
+}
+
+/**
+ * Defi entre le mot de passe verifie et la session ouverte.
+ *
+ * Il ne donne acces a rien d'autre qu'a la verification du second facteur :
+ * c'est ce qui permet de ne pas ouvrir de session avant que celui-ci soit
+ * passe, sans faire recirculer le mot de passe a la seconde etape.
+ */
+export interface MfaChallengeRecord {
+  readonly id: string;
+  readonly userId: string;
+}
+
+export interface MfaChallengeRepository {
+  create(data: {
+    userId: string;
+    tokenHash: string;
+    ip: string | null;
+    expiresAt: Date;
+  }): Promise<MfaChallengeRecord>;
+  findPendingByTokenHash(tokenHash: string, now: Date): Promise<MfaChallengeRecord | null>;
+  consume(challengeId: string, consumedAt: Date): Promise<void>;
+  deleteAllForUser(userId: string): Promise<void>;
 }
 
 export interface UserAccountRepository {
@@ -53,6 +103,9 @@ export interface UserAccountRepository {
   activateWithPassword(userId: string, passwordHash: string, activatedAt: Date): Promise<void>;
   /** Remplace le mot de passe, consomme le jeton et remet le verrouillage a zero. */
   replacePassword(userId: string, passwordHash: string): Promise<void>;
+
+  /** Empreinte du mot de passe, pour les operations qui exigent de le reconfirmer. */
+  findPasswordHash(userId: string): Promise<string | null>;
 }
 
 export interface SessionRecord {

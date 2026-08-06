@@ -28,6 +28,7 @@ export class PrismaUserAccountRepository implements UserAccountRepository {
       staffRole: row.staffRole,
       passwordHash: row.passwordHash,
       status: row.status,
+      mfaEnabled: row.mfaEnabled,
       lockout: { failedLoginCount: row.failedLoginCount, lockedUntil: row.lockedUntil },
     };
   }
@@ -59,6 +60,14 @@ export class PrismaUserAccountRepository implements UserAccountRepository {
       select: { id: true },
     });
     return row?.id ?? null;
+  }
+
+  async findPasswordHash(userId: string): Promise<string | null> {
+    const row = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { passwordHash: true },
+    });
+    return row?.passwordHash ?? null;
   }
 
   async updateLockout(userId: string, state: LockoutState): Promise<void> {

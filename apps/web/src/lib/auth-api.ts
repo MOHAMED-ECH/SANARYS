@@ -1,4 +1,4 @@
-import type { MeResponse } from "@sanarys/schemas";
+import type { LoginResponse, MeResponse, MfaStatusResponse } from "@sanarys/schemas";
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1";
 
@@ -104,11 +104,44 @@ export interface StaffLead {
   createdAt: string;
 }
 
+/** La reponse porte-t-elle une demande de second facteur plutot qu'un profil ? */
+export function isMfaRequired(response: LoginResponse): response is { mfaRequired: true } {
+  return "mfaRequired" in response && response.mfaRequired;
+}
+
 export const authApi = {
+  /**
+   * Un mot de passe correct n'ouvre pas forcement une session : quand le second
+   * facteur est actif, la reponse demande une etape de plus. L'appelant est
+   * oblige de distinguer les deux cas — voir `isMfaRequired`.
+   */
   login: (email: string, password: string) =>
-    authRequest<MeResponse>("/auth/login", {
+    authRequest<LoginResponse>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
+    }),
+
+  verifyMfa: (code: string) =>
+    authRequest<MeResponse>("/auth/mfa/verify", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    }),
+
+  mfaStatus: () => authRequest<MfaStatusResponse>("/auth/mfa"),
+
+  startMfaEnrollment: () =>
+    authRequest<{ secret: string; uri: string }>("/auth/mfa/enroll", { method: "POST" }),
+
+  confirmMfaEnrollment: (code: string) =>
+    authRequest<{ recoveryCodes: string[] }>("/auth/mfa/confirm", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    }),
+
+  disableMfa: (password: string) =>
+    authRequest<{ ok: boolean }>("/auth/mfa/disable", {
+      method: "POST",
+      body: JSON.stringify({ password }),
     }),
 
   logout: () => authRequest<{ ok: boolean }>("/auth/logout", { method: "POST" }),

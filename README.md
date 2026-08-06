@@ -111,12 +111,13 @@ Ce tableau existe pour qu'aucune démonstration ne laisse croire à une capacit�
 | Capture de leads, dédoublonnage, consentement horodaté et versionné | **Réel** |
 | File de leads interne pour le personnel SANARYS | **Réel** |
 | Authentification, sessions révocables, verrouillage, CSRF, journal d'audit | **Réel** — mais authentification de première partie, **pas un fournisseur OIDC** |
+| QR code d'enrôlement MFA | **Absent** — la clé base32 s'affiche pour une saisie manuelle. Générer un QR code demanderait une dépendance de plus (encodage Reed-Solomon), arbitrage laissé ouvert |
 | Isolation multi-organisations | **Réel**, couvert par des tests HTTP — **non audité par un tiers** |
 | Email, SMS, WhatsApp | **Simulé** : l'intention est journalisée, rien n'est envoyé |
 | Synchronisation CRM | **Simulé** : adaptateur no-op, le lead est marqué `MOCK_SYNCED` |
 | Stockage de documents | **Disque local** derrière une interface de forme S3 |
 | Carte des zones | **Schématique**, sans fond cartographique ni calcul d'itinéraire |
-| MFA | **Absent** — le champ existe, la fonction n'est pas implémentée |
+| MFA (TOTP) | **Réel** — enrôlement, codes de secours à usage unique, connexion en deux étapes. Conformité aux RFC 4226/6238 vérifiée sur les vecteurs de test officiels. Pas de QR code : la clé se saisit à la main (voir ci-dessous) |
 | CMS | **Absent** — le contenu éditorial vit dans `apps/web/src/content` |
 | Signature électronique | **Absente** |
 | Multilingue arabe et RTL | **Architecture prête** (polices, propriétés logiques), **contenu non traduit** |
@@ -137,7 +138,8 @@ Couverture actuelle :
 - **Moteur de règles** — une assertion par branche de règle, plus la traçabilité du snapshot.
 - **Scoring et dédoublonnage des leads** — dont la garantie qu'une re-soumission moins renseignée ne dégrade pas un lead qualifié.
 - **Autorisation** — tests unitaires de la matrice de décision et tests HTTP réels d'isolation : une PME n'atteint aucune donnée d'une autre PME par URL, contrat, rapport ou invitation.
-- **Authentification** — verrouillage après échecs, révocation de session, absence d'énumération de comptes, protection CSRF.
+- **Authentification** — verrouillage après échecs, révocation de session, absence d'énumération de comptes (vérifiée sur la réponse HTTP, pas seulement sur la politique), protection CSRF.
+- **Second facteur** — vecteurs officiels des RFC 4226 et 6238, puis parcours HTTP complet : enrôlement en deux temps, mot de passe seul devenu insuffisant, défi non rejouable, code de secours à usage unique.
 - **Parcours de conversion** — simulation complète en sept étapes, résultat expliqué, téléchargement PDF, demande d'audit.
 - **Accessibilité** — axe-core sur dix pages publiques, parcours clavier, `prefers-reduced-motion`.
 
@@ -162,7 +164,7 @@ Les tests automatiques ne remplacent pas une revue manuelle au lecteur d'écran,
 Cette liste n'est pas une formalité : chaque point bloque une mise en service réelle.
 
 1. **Valider les engagements publiés** — délais, disponibilité et méthode de mesure, avec la direction opérationnelle.
-2. **Remplacer l'authentification** par un fournisseur OIDC éprouvé et **activer le MFA** pour les profils privilégiés.
+2. **Remplacer l'authentification** par un fournisseur OIDC éprouvé. Le second facteur TOTP est en place et fonctionnel, mais il reste **facultatif** : le rendre obligatoire pour les profils privilégiés est une décision de gouvernance, pas une ligne de code.
 3. **Accomplir les formalités CNDP** et faire valider les mentions, durées de conservation et sous-traitants par le référent données.
 4. **Faire réaliser un pentest indépendant** et corriger avant ouverture ; rien de ce dépôt n'a été audité.
 5. **Brancher les intégrations réelles** (email, SMS/WhatsApp, CRM) en remplaçant les adaptateurs, sans toucher aux appelants.

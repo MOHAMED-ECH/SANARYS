@@ -307,8 +307,14 @@ model User {
   /// Personnel SANARYS uniquement (acces staff/leads, administration). Null pour les clients.
   staffRole StaffRole?
 
-  mfaEnabled Boolean    @default(false)
-  status     UserStatus @default(INVITED)
+  /// Second facteur actif. Le secret peut exister sans que le facteur le soit :
+  /// l'enrolement n'est valide qu'une fois un premier code verifie.
+  mfaEnabled     Boolean   @default(false)
+  /// Secret TOTP en base32. Null tant qu'aucun enrolement n'a ete commence.
+  mfaSecret      String?
+  mfaConfirmedAt DateTime?
+
+  status UserStatus @default(INVITED)
 
   // Invitations et reinitialisations : tokens hashes (jamais en clair) + expiration.
   inviteTokenHash String?   @unique
@@ -323,10 +329,47 @@ model User {
   invitedAt   DateTime  @default(now())
   activatedAt DateTime?
 
-  memberships OrganizationMembership[]
-  sessions    Session[]
+  memberships    OrganizationMembership[]
+  sessions       Session[]
+  recoveryCodes  MfaRecoveryCode[]
+  mfaChallenges  MfaChallenge[]
 
   createdAt DateTime @default(now())
+}
+
+/// Code de secours a usage unique, remis lors de l'activation du second
+/// facteur. Comme tout jeton, seul son condensat est persiste : la liste
+/// affichee a l'utilisateur ne peut pas etre relue depuis la base.
+model MfaRecoveryCode {
+  id       String    @id @default(cuid())
+  userId   String
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash String    @unique
+  usedAt   DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// Etat intermediaire entre le mot de passe verifie et la session ouverte.
+///
+/// Sans cette table, il faudrait soit ouvrir une session avant le second
+/// facteur — ce qui le viderait de son sens — soit refaire circuler le mot de
+/// passe a la seconde etape. Le defi est court, a usage unique, et ne donne
+/// acces a rien d'autre qu'a la verification du code.
+model MfaChallenge {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  ip         String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 /// Session serveur (cookie httpOnly). Rotation a chaque connexion ; revocation
