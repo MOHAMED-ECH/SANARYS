@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import clsx from "clsx";
+import { color } from "@sanarys/design-tokens";
 
 /**
  * Visualisation du modele CSPS : plusieurs PME d'une zone industrielle reliees
@@ -29,6 +30,26 @@ const COMPANIES = [
 
 const ANCHOR = { x: 50, y: 50 };
 
+/**
+ * Toit a trois dents au-dessus d'un batiment centre en (x, y).
+ *
+ * Les coordonnees sont exprimees dans le repere du viewBox (0-100) : le
+ * batiment mesure 8 de large, le toit le couvre exactement.
+ */
+function sawToothRoof(x: number, y: number): string {
+  const gauche = x - 4;
+  const base = y - 3.2;
+  const crete = y - 5.2;
+  const pas = 8 / 3;
+
+  const points = [`M${gauche} ${base}`];
+  for (let dent = 0; dent < 3; dent += 1) {
+    const debut = gauche + dent * pas;
+    points.push(`L${debut + pas * 0.45} ${crete}`, `L${debut + pas} ${base}`);
+  }
+  return points.join(" ");
+}
+
 export function CspsZoneDiagram({
   step,
   className,
@@ -44,12 +65,12 @@ export function CspsZoneDiagram({
       <svg viewBox="0 0 100 100" className="h-full w-full" role="presentation" aria-hidden="true">
         <defs>
           <radialGradient id="coverage" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#128796" stopOpacity="0.28" />
-            <stop offset="70%" stopColor="#128796" stopOpacity="0.10" />
-            <stop offset="100%" stopColor="#128796" stopOpacity="0" />
+            <stop offset="0%" stopColor={color.petrol[500]} stopOpacity="0.28" />
+            <stop offset="70%" stopColor={color.petrol[500]} stopOpacity="0.10" />
+            <stop offset="100%" stopColor={color.petrol[500]} stopOpacity="0" />
           </radialGradient>
           <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
-            <path d="M10 0H0v10" fill="none" stroke="#0A1730" strokeOpacity="0.06" strokeWidth="0.4" />
+            <path d="M10 0H0v10" fill="none" stroke={color.navy[950]} strokeOpacity="0.06" strokeWidth="0.4" />
           </pattern>
         </defs>
 
@@ -62,7 +83,7 @@ export function CspsZoneDiagram({
           height="96"
           rx="4"
           fill="none"
-          stroke="#0A1730"
+          stroke={color.navy[950]}
           strokeOpacity="0.12"
           strokeWidth="0.6"
           strokeDasharray="3 2"
@@ -84,7 +105,7 @@ export function CspsZoneDiagram({
           cy={ANCHOR.y}
           r="42"
           fill="none"
-          stroke="#0E6E7A"
+          stroke={color.petrol[600]}
           strokeWidth="0.5"
           strokeDasharray="2 2"
           initial={false}
@@ -100,7 +121,7 @@ export function CspsZoneDiagram({
             y1={company.y}
             x2={ANCHOR.x}
             y2={ANCHOR.y}
-            stroke={step >= 2 ? "#B5652C" : "#0E6E7A"}
+            stroke={step >= 2 ? color.copper[500] : color.petrol[600]}
             strokeWidth={step >= 2 ? 0.9 : 0.6}
             strokeLinecap="round"
             initial={false}
@@ -122,8 +143,8 @@ export function CspsZoneDiagram({
               width="8"
               height="6.4"
               rx="1"
-              fill="#FFFFFF"
-              stroke={step >= 2 ? "#B5652C" : "#0A1730"}
+              fill={color.mist.white}
+              stroke={step >= 2 ? color.copper[500] : color.navy[950]}
               strokeOpacity={step >= 2 ? 0.8 : 0.25}
               strokeWidth="0.6"
               initial={false}
@@ -131,12 +152,17 @@ export function CspsZoneDiagram({
               transition={{ duration: reduced ? 0 : 0.3 }}
               style={{ transformOrigin: `${company.x}px ${company.y}px` }}
             />
+            {/* Toit en dents de scie : la silhouette d'atelier, la meme que
+                celle du panorama de l'accueil. Les deux schemas decrivent la
+                meme zone, l'un vu de dessus, l'autre de face — ils doivent
+                employer le meme vocabulaire. */}
             <path
-              d={`M${company.x - 4} ${company.y - 3.2} L${company.x} ${company.y - 5.4} L${company.x + 4} ${company.y - 3.2}`}
-              fill="#EDE3D2"
-              stroke="#0A1730"
+              d={sawToothRoof(company.x, company.y)}
+              fill={color.sand[200]}
+              stroke={color.navy[950]}
               strokeOpacity="0.2"
-              strokeWidth="0.5"
+              strokeWidth="0.45"
+              strokeLinejoin="round"
             />
           </g>
         ))}
@@ -148,7 +174,7 @@ export function CspsZoneDiagram({
             cy={ANCHOR.y}
             r="10"
             fill="none"
-            stroke="#0E6E7A"
+            stroke={color.petrol[600]}
             strokeWidth="0.8"
             className="origin-center animate-pulse-ring"
             style={{ transformOrigin: "50% 50%" }}
@@ -162,11 +188,11 @@ export function CspsZoneDiagram({
           transition={{ duration: reduced ? 0 : 0.4, ease: [0.4, 0, 0.2, 1] }}
           style={{ transformOrigin: "50% 50%" }}
         >
-          <circle cx={ANCHOR.x} cy={ANCHOR.y} r="8" fill="#0A1730" />
-          <circle cx={ANCHOR.x} cy={ANCHOR.y} r="5.6" fill="#B5652C" />
+          <circle cx={ANCHOR.x} cy={ANCHOR.y} r="8" fill={color.navy[950]} />
+          <circle cx={ANCHOR.x} cy={ANCHOR.y} r="5.6" fill={color.copper[500]} />
           <path
             d={`M${ANCHOR.x} ${ANCHOR.y - 3} V${ANCHOR.y + 3} M${ANCHOR.x - 3} ${ANCHOR.y} H${ANCHOR.x + 3}`}
-            stroke="#FFFFFF"
+            stroke={color.mist.white}
             strokeWidth="1.4"
             strokeLinecap="round"
           />

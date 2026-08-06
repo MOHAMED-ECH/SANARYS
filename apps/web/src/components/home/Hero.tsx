@@ -52,14 +52,12 @@ export function Hero() {
           </p>
         </div>
 
-        <div className="relative">
-          <div className="rounded-lg border border-mist-white/10 bg-mist-white/5 p-6 backdrop-blur-sm">
-            <CspsZoneDiagramAuto />
-            <p className="mt-4 text-center text-sm text-mist-50/70">
-              Un point d&apos;ancrage central, un rayonnement sur toute la zone, un coût partagé
-              entre les PME membres.
-            </p>
-          </div>
+        {/* Le diagramme etait enferme dans une carte bordee : il en ressortait
+            timide, alors qu'il porte l'idee entiere du modele. Il respire
+            maintenant a meme le fond, et deborde legerement de sa colonne sur
+            grand ecran pour gagner en presence. */}
+        <div className="relative lg:-me-8 lg:-my-4 xl:-me-16">
+          <CspsZoneDiagramAuto />
         </div>
       </div>
 
