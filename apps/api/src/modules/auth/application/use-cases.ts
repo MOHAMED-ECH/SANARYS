@@ -69,17 +69,26 @@ export class LogInUseCase {
       throw new InvalidCredentialsError();
     }
 
-    if (isLocked(user.lockout, now)) {
-      await this.recordFailure(command.ip, "locked", user.id);
-      throw new AccountLockedError();
-    }
-
+    const locked = isLocked(user.lockout, now);
     const valid = await this.deps.passwords.verify(user.passwordHash, command.password);
 
     if (!valid) {
+      // Un echec compte meme pendant le verrouillage : c'est ce qui prolonge
+      // l'attente d'un attaquant qui insiste, comme le promet `afterFailedAttempt`.
       await this.deps.users.updateLockout(user.id, afterFailedAttempt(user.lockout, now));
-      await this.recordFailure(command.ip, "invalid");
+      await this.recordFailure(command.ip, locked ? "locked" : "invalid", user.id);
+      // Reponse volontairement identique a celle d'un compte inconnu. Reveler
+      // ici que le compte est verrouille suffirait a enumerer les comptes :
+      // il suffirait d'envoyer cinq mots de passe faux par adresse candidate
+      // et de guetter le statut qui change.
       throw new InvalidCredentialsError();
+    }
+
+    // A partir d'ici, l'appelant a prouve qu'il connait le mot de passe. Lui
+    // dire que le compte est verrouille ne lui apprend rien qu'il ignore.
+    if (locked) {
+      await this.recordFailure(command.ip, "locked", user.id);
+      throw new AccountLockedError();
     }
 
     if (needsLockoutReset(user.lockout)) {
