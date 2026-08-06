@@ -3,14 +3,47 @@ import type { Metadata } from "next";
 import { Hero } from "@/components/home/Hero";
 import { CspsExplainer } from "@/components/home/CspsExplainer";
 import { MiniSimulator } from "@/components/home/MiniSimulator";
+import { ZonePanorama } from "@/components/csps/ZonePanorama";
 import { Section, SectionHeader } from "@/components/ui/Section";
 import { ButtonLink } from "@/components/ui/Button";
+import { Figure } from "@/components/ui/Figure";
+import { MEDIA } from "@/content/media";
 import { DEPLOYMENT_STEPS, SECTORS, SERVICES } from "@/content/site";
 
 export const metadata: Metadata = {
   description:
     "Le modèle CSPS de SANARYS mutualise ambulance, personnel médical, infirmerie et reporting entre les PME d'une même zone industrielle marocaine. Simulez votre dispositif en quelques minutes.",
 };
+
+/**
+ * Les deux premieres lignes de services sont le dispositif lui-meme :
+ * l'ambulance et le personnel. Les six autres viennent en complement. Cette
+ * distinction est editoriale, pas technique — elle vit donc ici, pres de la
+ * mise en page qu'elle commande.
+ */
+const PRIMARY_SERVICES = SERVICES.slice(0, 2);
+const SECONDARY_SERVICES = SERVICES.slice(2);
+
+function Arrow() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden="true"
+      className="transition-transform duration-base group-hover:translate-x-1"
+    >
+      <path
+        d="M4 10h11M11 6l4 4-4 4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 const SIMULATOR_BENEFITS = [
   "Type d'ambulance et modules suggérés, avec la justification de chaque recommandation",
@@ -50,6 +83,59 @@ export default function HomePage() {
           </div>
         </div>
       </Section>
+
+      {/* Rupture visuelle : la zone en coupe, pleine largeur.
+          L'accueil enchaînait sept sections au même gabarit — libellé, titre,
+          grille de cartes. Cette bande est le seul endroit où le regard
+          s'arrête, et elle porte l'argument entier : un dispositif au centre,
+          une couverture qui atteint tout le monde. */}
+      <section className="relative overflow-hidden bg-navy-950">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-mist-white/10"
+        />
+        <div className="container-page pt-16 md:pt-20">
+          <div className="max-w-2xl">
+            <p className="eyebrow text-copper-300">Le principe</p>
+            <p className="mt-4 text-3xl font-bold leading-tight text-mist-white md:text-[2.4rem]">
+              Un seul dispositif, financé à plusieurs, qui couvre toute la zone.
+            </p>
+            <p className="mt-5 text-lg leading-relaxed text-mist-50/70">
+              Ce qu&apos;aucune PME ne peut porter seule devient accessible dès lors que les
+              entreprises voisines le partagent. Le point d&apos;ancrage est implanté au centre de la
+              zone ; la couverture est dimensionnée lors de l&apos;audit terrain.
+            </p>
+          </div>
+        </div>
+
+        {/* Pleine largeur, hors conteneur : c'est le seul élément de la page qui
+            touche les deux bords, et c'est ce qui en fait une rupture.
+            La légende, elle, reste alignée sur la grille du texte. */}
+        <Figure
+          asset={MEDIA.zonePanorama}
+          onDark
+          className="mt-10 pb-14 md:mt-12 md:pb-16"
+          captionClassName="container-page mt-5"
+          caption={
+            <>
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-copper-500" />
+                Point d&apos;ancrage du CSPS
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <span className="w-6 border-t border-dashed border-petrol-500" />
+                Périmètre de couverture
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <span className="w-6 border-t border-dashed border-copper-300" />
+                Itinéraires vers les entreprises membres
+              </span>
+            </>
+          }
+        >
+          <ZonePanorama />
+        </Figure>
+      </section>
 
       {/* Explication interactive du modèle. */}
       <Section tone="mist" id="modele">
@@ -111,8 +197,34 @@ export default function HomePage() {
           title="Huit lignes de services, mobilisables seules ou combinées"
           lead="Chaque service peut être contractualisé indépendamment ou intégré au pack CSPS de votre groupement."
         />
-        <ul className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {SERVICES.map((service) => (
+        {/* Les deux premieres lignes portent le coeur du dispositif : les
+            afficher a egalite avec les formations laissait le visiteur sans
+            aucun repere sur ce qui compte. */}
+        <ul className="grid gap-4 md:grid-cols-2">
+          {PRIMARY_SERVICES.map((service) => (
+            <li key={service.slug}>
+              <Link
+                href={`/solutions/${service.slug}`}
+                className="group flex h-full flex-col rounded-lg border border-petrol-600/25 bg-mist-white p-7 transition-all duration-base hover:-translate-y-0.5 hover:border-petrol-600/50 hover:shadow-card md:p-8"
+              >
+                <span className="inline-flex w-fit items-center rounded-full bg-petrol-100 px-3 py-1 font-heading text-xs font-bold uppercase tracking-[0.1em] text-petrol-600">
+                  Cœur du dispositif
+                </span>
+                <h3 className="mt-4 font-heading text-2xl font-bold leading-snug text-navy-950">
+                  {service.title}
+                </h3>
+                <p className="mt-3 flex-1 leading-relaxed text-slate-600">{service.summary}</p>
+                <span className="mt-5 inline-flex items-center gap-1.5 font-heading font-semibold text-petrol-600">
+                  En savoir plus
+                  <Arrow />
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+
+        <ul className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {SECONDARY_SERVICES.map((service) => (
             <li key={service.slug}>
               <Link
                 href={`/solutions/${service.slug}`}
@@ -129,22 +241,7 @@ export default function HomePage() {
                 </p>
                 <span className="mt-4 inline-flex items-center gap-1.5 font-heading text-sm font-semibold text-petrol-600">
                   En savoir plus
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    aria-hidden="true"
-                    className="transition-transform duration-base group-hover:translate-x-1"
-                  >
-                    <path
-                      d="M4 10h11M11 6l4 4-4 4"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <Arrow />
                 </span>
               </Link>
             </li>
@@ -152,8 +249,9 @@ export default function HomePage() {
         </ul>
       </Section>
 
-      {/* Secteurs. */}
-      <Section tone="light">
+      {/* Secteurs. Ton sable : une respiration chaude avant le bloc sombre
+          du deploiement, plutot qu'un cinquieme blanc d'affilee. */}
+      <Section tone="sand">
         <SectionHeader
           eyebrow="Par secteur"
           title="Des risques différents appellent des dispositifs différents"
@@ -164,7 +262,7 @@ export default function HomePage() {
             <li key={sector.slug}>
               <Link
                 href={`/secteurs/${sector.slug}`}
-                className="group block h-full rounded-lg border border-navy-950/8 p-6 transition-all duration-base hover:border-copper-300 hover:bg-sand-200/40"
+                className="group block h-full rounded-lg border border-navy-950/10 bg-mist-white/55 p-6 transition-all duration-base hover:border-copper-500/45 hover:bg-mist-white"
               >
                 <h3 className="font-heading text-lg font-bold text-navy-950">{sector.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-slate-600">{sector.lead}</p>
@@ -194,7 +292,7 @@ export default function HomePage() {
       </Section>
 
       {/* Appel à l'action final. */}
-      <Section tone="sand">
+      <Section tone="light">
         <div className="mx-auto max-w-2xl text-center">
           <span className="accent-rule" />
           <h2 className="mt-6 text-3xl font-bold leading-tight text-navy-950 md:text-4xl">

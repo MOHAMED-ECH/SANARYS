@@ -153,6 +153,8 @@ Les tests automatiques ne remplacent pas une revue manuelle au lecteur d'écran,
 
 **Prudence sur les preuves.** Les chiffres affichés proviennent de la brochure SANARYS et sont présentés comme des **objectifs contractuels**, jamais comme des mesures vérifiées par un tiers. Aucun témoignage, logo client ou étude de cas n'est publié : la page « cas clients » est volontairement absente tant qu'il n'existe pas de contenu vérifié et autorisé.
 
+**Un visuel non SANARYS s'annonce comme tel.** Le registre `apps/web/src/content/media.ts` porte l'origine de chaque visuel ; le composant `Figure` en déduit une mention affichée (« photo d'illustration », « illustration schématique »). La mention n'est pas un paramètre que l'appelant peut omettre : une photo de banque d'images ne peut pas être publiée sans se signaler. C'est la même exigence que pour les chiffres — on distingue ce qui est constaté de ce qui est illustré. Déposer une vraie photo dans `public/media/`, passer `origin` à `"sanarys"`, et la mention disparaît d'elle-même.
+
 **Le cuivre est une signature.** Utilisé pour les accents ponctuels, jamais en aplat de section. Sa valeur a été corrigée à `#A85B26` pour atteindre 5:1 de contraste : la teinte d'origine échouait au seuil WCAG AA.
 
 ## Avant toute mise en production

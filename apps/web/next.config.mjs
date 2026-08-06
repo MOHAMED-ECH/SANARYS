@@ -3,6 +3,15 @@ const nextConfig = {
   reactStrictMode: true,
   transpilePackages: ["@sanarys/design-tokens", "@sanarys/schemas"],
 
+  images: {
+    // L'Image Optimizer est desactive volontairement. La vulnerabilite de deni
+    // de service signalee sur next@14 le vise precisement ; tant qu'aucune
+    // route /_next/image n'existe, elle reste sans effet sur ce deploiement.
+    // Voir docs/dependances-securite.md — cette ligne est ce qui rend
+    // l'analyse valide, ne pas la retirer sans migrer next au prealable.
+    unoptimized: true,
+  },
+
   webpack: (config) => {
     // Les packages partages utilisent des imports relatifs en ".js" (resolution
     // NodeNext pour l'API). Le bundler doit les faire pointer vers les sources

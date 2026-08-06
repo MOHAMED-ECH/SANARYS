@@ -8,7 +8,7 @@ Le guide d'architecture (§15.1) impose une analyse des dépendances en intégra
 
 | Paquet | Gravité | Vecteur | Exposition réelle |
 |---|---|---|---|
-| `next` | haute | Déni de service via l'Image Optimizer, en auto-hébergement | **Aucune** — `next/image` n'est utilisé nulle part et aucune configuration `images` n'existe. L'Image Optimizer n'est pas atteignable. |
+| `next` | haute | Déni de service via l'Image Optimizer, en auto-hébergement | **Aucune** — l'Image Optimizer est désactivé explicitement (`images.unoptimized` dans `next.config.mjs`). La route `/_next/image` n'existe donc pas. |
 | `postcss` | haute | XSS via un `</style>` non échappé à la sortie du stringifier CSS | **Aucune** — un seul fichier CSS est traité (`apps/web/src/styles/globals.css`), écrit par l'équipe. Aucun CSS d'origine tierce n'entre dans la chaîne de build. |
 | `vite` | haute | Path traversal dans la gestion des `.map` des dépendances optimisées | **Aucune en production** — `vite` n'arrive que par `vitest`, dépendance de développement. Le serveur concerné ne tourne jamais en production. |
 | `vitest` | critique | Chaîne `@vitest/mocker` → `vite` | **Aucune en production** — `vitest` est déclaré en `devDependencies` dans `apps/web` et `apps/api`. Il n'est pas installé sur un environnement déployé (`npm ci --omit=dev`). |
@@ -16,8 +16,8 @@ Le guide d'architecture (§15.1) impose une analyse des dépendances en intégra
 Vérifications reproductibles :
 
 ```bash
-# Aucun usage de next/image
-grep -rn "next/image\|<Image" apps/web/src | wc -l      # → 0
+# L'Image Optimizer est désactivé : la route vulnérable n'est pas générée
+grep -n "unoptimized" apps/web/next.config.mjs          # → images.unoptimized: true
 
 # vitest est bien en dépendance de développement
 node -e "const p=require('./apps/web/package.json'); console.log('deps:', !!p.dependencies.vitest, '| dev:', !!p.devDependencies.vitest)"
@@ -38,7 +38,7 @@ Faire ces migrations sans exposition réelle, c'est prendre un risque de régres
 
 Ces migrations deviennent **obligatoires** si l'une de ces conditions apparaît :
 
-1. Utilisation de `next/image` ou activation de l'Image Optimizer, quelle qu'en soit la raison.
+1. Retrait de `images.unoptimized` dans `next.config.mjs`, ou activation de l'Image Optimizer par un autre biais, quelle qu'en soit la raison. C'est la seule ligne qui rend l'analyse ci-dessus valide.
 2. Traitement de CSS provenant d'une source non maîtrisée (thème client, CMS, contribution externe).
 3. Publication d'un correctif rétroporté sur `next@14` ou `vitest@2` — à surveiller.
 4. Mise en production : la migration doit alors être planifiée et testée, indépendamment de l'exposition, pour ne pas rester sur des lignes majeures qui cesseront d'être maintenues.
