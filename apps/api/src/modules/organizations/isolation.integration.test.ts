@@ -2,7 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@sanarys/db";
 import { buildApp } from "../../app.js";
-import { CSRF_COOKIE, SESSION_COOKIE } from "../../plugins/auth.js";
+import { CSRF_COOKIE, SESSION_COOKIE } from "../auth/index.js";
+import { Argon2PasswordHasher } from "../auth/infrastructure/argon2-password-hasher.js";
 
 /**
  * Tests d'isolation de bout en bout (HTTP reel, base reelle).
@@ -53,7 +54,9 @@ beforeAll(async () => {
   app = await buildApp();
   await app.ready();
 
-  const passwordHash = await app.auth.hashPassword(PASSWORD);
+  // Le jeu de donnees de test est prepare en base directement : on utilise
+  // donc le meme hacheur que l'application, sans passer par ses cas d'usage.
+  const passwordHash = await new Argon2PasswordHasher().hash(PASSWORD);
 
   await prisma.industrialZone.upsert({
     where: { id: ids.zone },

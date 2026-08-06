@@ -1,35 +1,28 @@
 import fp from "fastify-plugin";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import type { Prisma } from "@sanarys/db";
-import { AuthService, safeEqual } from "../modules/auth/service.js";
-import { loadActor, type Actor } from "../modules/authz/index.js";
-
-export const SESSION_COOKIE = "sanarys_session";
-export const CSRF_COOKIE = "sanarys_csrf";
-export const CSRF_HEADER = "x-sanarys-csrf";
+import { CSRF_COOKIE, CSRF_HEADER, SESSION_COOKIE, type AuthModule } from "../modules/auth/index.js";
+import type { Actor, ActorRepository } from "../modules/authz/index.js";
+import type { AuditTrailPort } from "../shared/audit/audit-trail.js";
+import { safeEqual } from "../shared/cryptography/constant-time.js";
 
 declare module "fastify" {
   interface FastifyInstance {
-    auth: AuthService;
     /** preHandler : exige une session valide et charge l'acteur d'autorisation. */
     requireAuth: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
     /** preHandler : exige un membre du personnel SANARYS. */
     requireStaff: (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
-    audit: (
-      request: FastifyRequest,
-      entry: {
-        action: string;
-        resourceType: string;
-        resourceId?: string;
-        metadata?: Record<string, unknown>;
-      },
-    ) => Promise<void>;
   }
 
   interface FastifyRequest {
     actor?: Actor;
     sessionId?: string;
   }
+}
+
+export interface AuthPluginDependencies {
+  readonly auth: AuthModule;
+  readonly actors: ActorRepository;
+  readonly audit: AuditTrailPort;
 }
 
 /**
@@ -47,69 +40,55 @@ function verifyCsrf(request: FastifyRequest): boolean {
   return safeEqual(cookie, header);
 }
 
-export const authPlugin = fp(async (app: FastifyInstance) => {
-  const auth = new AuthService(app.prisma);
-  app.decorate("auth", auth);
+/**
+ * Garde d'entree HTTP. C'est de la presentation : elle traduit un cookie en
+ * acteur d'autorisation, et un refus en statut. Toute la logique de session
+ * vit dans le module auth, celle des droits dans le noyau authz.
+ */
+export function createAuthPlugin(deps: AuthPluginDependencies) {
+  return fp(async (app: FastifyInstance) => {
+    app.decorate("requireAuth", async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!verifyCsrf(request)) {
+        return reply.code(403).send({ message: "Requête refusée.", code: "CSRF" });
+      }
 
-  app.decorate(
-    "audit",
-    async (
-      request: FastifyRequest,
-      entry: {
-        action: string;
-        resourceType: string;
-        resourceId?: string;
-        metadata?: Record<string, unknown>;
-      },
-    ) => {
-      await app.prisma.auditLog.create({
-        data: {
+      const token = request.cookies[SESSION_COOKIE];
+      if (!token) {
+        return reply.code(401).send({ message: "Authentification requise." });
+      }
+
+      const session = await deps.auth.resolveSession.execute(token);
+      if (!session) {
+        return reply.code(401).send({ message: "Session expirée ou révoquée." });
+      }
+
+      // Le compte est relu a chaque requete : une suspension prend effet
+      // immediatement, sans attendre l'expiration de la session.
+      const actor = await deps.actors.load(session.userId);
+      if (!actor) {
+        return reply.code(401).send({ message: "Compte indisponible." });
+      }
+
+      request.actor = actor;
+      request.sessionId = session.sessionId;
+    });
+
+    app.decorate("requireStaff", async (request: FastifyRequest, reply: FastifyReply) => {
+      await app.requireAuth(request, reply);
+      if (reply.sent) return;
+
+      if (!request.actor?.staffRole) {
+        // Une tentative d'acces au back-office par un compte client est un
+        // signal de securite : elle est tracee, meme refusee.
+        await deps.audit.record({
           actorUserId: request.actor?.userId ?? null,
-          action: entry.action,
-          resourceType: entry.resourceType,
-          resourceId: entry.resourceId ?? null,
+          action: "staff.access_denied",
+          resourceType: "staff",
           ip: request.ip,
-          metadata: (entry.metadata ?? {}) as Prisma.InputJsonValue,
-        },
-      });
-    },
-  );
-
-  app.decorate("requireAuth", async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!verifyCsrf(request)) {
-      return reply.code(403).send({ message: "Requête refusée.", code: "CSRF" });
-    }
-
-    const token = request.cookies[SESSION_COOKIE];
-    if (!token) {
-      return reply.code(401).send({ message: "Authentification requise." });
-    }
-
-    const session = await auth.resolveSession(token);
-    if (!session) {
-      return reply.code(401).send({ message: "Session expirée ou révoquée." });
-    }
-
-    const actor = await loadActor(app.prisma, session.userId);
-    if (!actor) {
-      return reply.code(401).send({ message: "Compte indisponible." });
-    }
-
-    request.actor = actor;
-    request.sessionId = session.sessionId;
+          metadata: { path: request.url },
+        });
+        return reply.code(403).send({ message: "Accès réservé au personnel SANARYS." });
+      }
+    });
   });
-
-  app.decorate("requireStaff", async (request: FastifyRequest, reply: FastifyReply) => {
-    await app.requireAuth(request, reply);
-    if (reply.sent) return;
-
-    if (!request.actor?.staffRole) {
-      await app.audit(request, {
-        action: "staff.access_denied",
-        resourceType: "staff",
-        metadata: { path: request.url },
-      });
-      return reply.code(403).send({ message: "Accès réservé au personnel SANARYS." });
-    }
-  });
-});
+}

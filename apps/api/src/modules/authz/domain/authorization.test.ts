@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { accessibleOrganizationIds, can, type Actor } from "./index.js";
+import { accessibleOrganizationIds, can, resolveScope, type Actor } from "./authorization.js";
 
 /**
  * Tests d'autorisation. L'exigence AUTH-AC-01 du cahier des charges impose
@@ -143,5 +143,32 @@ describe("refus par défaut", () => {
     };
     expect(can(orphan, "organization:read", { organizationId: ORG_PME_A })).toBe(false);
     expect(accessibleOrganizationIds(orphan)).toEqual([]);
+  });
+});
+
+describe("resolveScope", () => {
+  it("retourne le périmètre quand l'accès est autorisé", () => {
+    expect(resolveScope(pmeADirector, "organization:read", ORG_PME_A)).toEqual([ORG_PME_A]);
+  });
+
+  it("refuse l'organisation d'une autre PME", () => {
+    expect(resolveScope(pmeADirector, "organization:read", ORG_PME_B)).toBeNull();
+  });
+
+  it("restreint le groupement à son propre périmètre, jamais au-delà", () => {
+    const scope = resolveScope(groupementAdmin, "report:read", ORG_PME_A);
+    expect(scope).toEqual([ORG_GROUPEMENT, ORG_PME_A, ORG_PME_B]);
+    expect(scope).not.toContain("org-inconnue");
+  });
+
+  it("refuse le personnel SANARYS sur les données clientes", () => {
+    // Le staff a un périmètre vide : même autorisé, il ne pourrait rien lire.
+    expect(resolveScope(salesStaff, "organization:read", ORG_PME_A)).toBeNull();
+  });
+
+  it("refuse l'invitation par héritage : elle exige une appartenance directe", () => {
+    // Le groupement lit les données de sa PME, mais n'y invite personne.
+    expect(resolveScope(groupementAdmin, "report:read", ORG_PME_A)).not.toBeNull();
+    expect(resolveScope(groupementAdmin, "member:invite", ORG_PME_A)).toBeNull();
   });
 });
