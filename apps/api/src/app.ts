@@ -22,10 +22,10 @@ import { createCrmAdapter, type CrmPort } from "./integrations/crm/index.js";
 import { createStorageAdapter, type StoragePort } from "./integrations/storage/index.js";
 import { authPlugin } from "./plugins/auth.js";
 import { createSimulationsModule, simulationsRoutes } from "./modules/simulations/index.js";
-import { zonesRoutes } from "./modules/zones/routes.js";
-import { leadsRoutes } from "./modules/leads/routes.js";
-import { auditRequestsRoutes } from "./modules/audit-requests/routes.js";
-import { analyticsRoutes } from "./modules/analytics/routes.js";
+import { createZonesModule, zonesRoutes } from "./modules/zones/index.js";
+import { createLeadsModule, leadsRoutes } from "./modules/leads/index.js";
+import { createAuditRequestsModule, auditRequestsRoutes } from "./modules/audit-requests/index.js";
+import { createAnalyticsModule, analyticsRoutes } from "./modules/analytics/index.js";
 import { authRoutes } from "./modules/auth/routes.js";
 import { staffRoutes } from "./modules/staff/routes.js";
 import { organizationsRoutes } from "./modules/organizations/routes.js";
@@ -106,14 +106,24 @@ export async function buildApp(): Promise<FastifyInstance> {
   });
 
   // --- Modules refondus en couches -----------------------------------------
+  const notifications = app.notifications;
+  const crm = app.crm;
+
   const simulations = createSimulationsModule({ prisma, storage });
+  const zones = createZonesModule({ prisma });
+  const analytics = createAnalyticsModule({ prisma });
+  const leads = createLeadsModule({ prisma, crm, notifications });
+  // audit-requests depend du module leads, pas de ses tables : la demande
+  // d'audit fait progresser le lead via l'API publique de celui-ci.
+  const auditRequests = createAuditRequestsModule({ prisma, notifications, leads });
+
   await app.register(simulationsRoutes(simulations), { prefix: "/api/v1" });
+  await app.register(zonesRoutes(zones), { prefix: "/api/v1" });
+  await app.register(leadsRoutes(leads), { prefix: "/api/v1" });
+  await app.register(auditRequestsRoutes(auditRequests), { prefix: "/api/v1" });
+  await app.register(analyticsRoutes(analytics), { prefix: "/api/v1" });
 
   // --- Modules restant a refondre ------------------------------------------
-  await app.register(zonesRoutes, { prefix: "/api/v1" });
-  await app.register(leadsRoutes, { prefix: "/api/v1" });
-  await app.register(auditRequestsRoutes, { prefix: "/api/v1" });
-  await app.register(analyticsRoutes, { prefix: "/api/v1" });
   await app.register(authRoutes, { prefix: "/api/v1" });
   await app.register(staffRoutes, { prefix: "/api/v1" });
   await app.register(organizationsRoutes, { prefix: "/api/v1" });

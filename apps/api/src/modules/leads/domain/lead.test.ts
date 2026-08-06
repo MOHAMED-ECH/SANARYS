@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDedupeKey, priorityFromScore, scoreLead } from "./service.js";
+import { buildDedupeKey, priorityFromScore, reconcileScore, scoreLead } from "./lead.js";
 
 describe("buildDedupeKey", () => {
   it("est insensible a la casse et aux espaces", () => {
@@ -44,5 +44,23 @@ describe("scoreLead", () => {
       else if (score >= 30) expect(priority).toBe("MEDIUM");
       else expect(priority).toBe("LOW");
     }
+  });
+});
+
+describe("reconcileScore", () => {
+  it("ne degrade jamais un lead deja qualifie", () => {
+    // Cas reel : une simulation complete (score eleve) suivie d'un simple
+    // formulaire de contact. Le second envoi ne doit pas faire retomber le lead.
+    const reconciled = reconcileScore(25, 80);
+    expect(reconciled.score).toBe(80);
+    expect(reconciled.priority).toBe("HIGH");
+  });
+
+  it("retient le meilleur score quand la nouvelle soumission est mieux renseignee", () => {
+    expect(reconcileScore(72, 30).score).toBe(72);
+  });
+
+  it("accepte un lead qui n'existait pas encore", () => {
+    expect(reconcileScore(40, null)).toEqual({ score: 40, priority: "MEDIUM" });
   });
 });
