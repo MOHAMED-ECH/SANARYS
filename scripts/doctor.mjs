@@ -6,11 +6,12 @@
 // Ecrit en Node sans dependance pour tourner a l'identique sous Windows,
 // macOS et Linux.
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { createConnection } from "node:net";
 import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
+const migrationsDir = `${root}packages/db/prisma/migrations`;
 const isWindows = process.platform === "win32";
 
 const results = [];
@@ -133,9 +134,35 @@ if (!databaseUrl) {
         const { PrismaClient } = await import("@prisma/client");
         const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
         try {
+          // Migrations en attente. Ce controle passait auparavant par le simple
+          // comptage des zones : une base peuplee mais en retard d'une migration
+          // etait declaree saine. L'API demarrait, puis renvoyait un 500 P2022
+          // ("column does not exist") a la premiere requete touchant une colonne
+          // ajoutee depuis. Le diagnostic doit attraper cela, c'est sa raison d'etre.
+          const attendues = readdirSync(migrationsDir, { withFileTypes: true })
+            .filter((entry) => entry.isDirectory())
+            .map((entry) => entry.name)
+            .sort();
+
+          const appliquees = await prisma.$queryRaw`
+            SELECT migration_name FROM _prisma_migrations WHERE finished_at IS NOT NULL
+          `;
+          const connues = new Set(appliquees.map((row) => row.migration_name));
+          const enAttente = attendues.filter((name) => !connues.has(name));
+
+          if (enAttente.length > 0) {
+            fail(
+              "Migrations",
+              `${enAttente.length} migration(s) non appliquee(s) : ${enAttente.join(", ")}`,
+              "npm run db:migrate",
+            );
+          } else {
+            ok("Migrations", `${attendues.length} migration(s), toutes appliquees`);
+          }
+
           const zones = await prisma.industrialZone.count();
           if (zones > 0) {
-            ok("Donnees", `${zones} zone(s) industrielle(s) — migrations et seed appliques`);
+            ok("Donnees", `${zones} zone(s) industrielle(s) — jeu de demonstration charge`);
           } else {
             warn(
               "Donnees",
