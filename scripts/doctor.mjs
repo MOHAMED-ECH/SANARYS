@@ -12,6 +12,9 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const migrationsDir = `${root}packages/db/prisma/migrations`;
+
+/** Comptes crees par `npm run db:seed`. Voir packages/db/src/seed.ts. */
+const DEMO_ACCOUNTS = ["demo@sanarys.ma", "pme-a@sanarys.ma", "staff@sanarys.ma"];
 const isWindows = process.platform === "win32";
 
 const results = [];
@@ -169,6 +172,65 @@ if (!databaseUrl) {
               "schema present mais aucune zone : le jeu de demonstration n'est pas charge",
               "npm run db:seed",
             );
+          }
+
+          // Etat des comptes de demonstration.
+          //
+          // Depuis que la reponse de connexion ne distingue plus un compte
+          // verrouille d'un mot de passe faux — c'est voulu, cela empechait
+          // d'enumerer les comptes — un utilisateur bloque n'a plus aucun moyen
+          // de le savoir depuis le formulaire. L'information doit donc etre
+          // disponible ici, du cote ou on a le droit de la lire.
+          const comptes = await prisma.user.findMany({
+            where: { email: { in: DEMO_ACCOUNTS } },
+            select: {
+              email: true,
+              status: true,
+              lockedUntil: true,
+              failedLoginCount: true,
+              passwordHash: true,
+              mfaEnabled: true,
+            },
+          });
+
+          if (comptes.length === 0) {
+            fail(
+              "Comptes de demo",
+              "aucun des comptes de demonstration n'existe dans cette base",
+              "npm run db:seed",
+            );
+          } else {
+            const maintenant = Date.now();
+            const verrouilles = comptes.filter(
+              (c) => c.lockedUntil && c.lockedUntil.getTime() > maintenant,
+            );
+            const inactifs = comptes.filter((c) => c.status !== "ACTIVE" || !c.passwordHash);
+
+            if (verrouilles.length > 0) {
+              const details = verrouilles
+                .map((c) => {
+                  const minutes = Math.ceil((c.lockedUntil.getTime() - maintenant) / 60000);
+                  return `${c.email} (encore ${minutes} min)`;
+                })
+                .join(", ");
+              fail(
+                "Comptes de demo",
+                `verrouille(s) apres trop de tentatives : ${details}. Le formulaire affiche « Identifiants invalides », il ne le dira pas`,
+                "npm run db:unlock   (ou attendez l'expiration)",
+              );
+            } else if (inactifs.length > 0) {
+              fail(
+                "Comptes de demo",
+                `sans mot de passe ou non actifs : ${inactifs.map((c) => c.email).join(", ")}`,
+                "npm run db:seed",
+              );
+            } else {
+              const avecMfa = comptes.filter((c) => c.mfaEnabled).map((c) => c.email);
+              const note = avecMfa.length
+                ? ` — second facteur actif sur ${avecMfa.join(", ")}, un code sera demande`
+                : "";
+              ok("Comptes de demo", `${comptes.length} compte(s) actif(s), aucun verrouillage${note}`);
+            }
           }
         } catch {
           fail(

@@ -209,6 +209,23 @@ puis de relancer `npm run setup` et de reporter vos valeurs à la main.
 **`Can't reach database server at localhost:5432`**
 PostgreSQL n'est pas démarré. macOS : `brew services start postgresql@16`. Linux : `sudo systemctl start postgresql`. Docker : `docker compose up -d postgres`.
 
+**La connexion renvoie une erreur 500**
+Le schéma de la base est en retard sur le code : une colonne demandée par
+Prisma n'existe pas encore (erreur `P2022`). C'est le cas typique après avoir
+récupéré des commits qui ajoutent une migration. `npm run db:migrate`, puis
+relancez l'API. `npm run doctor` nomme désormais les migrations manquantes.
+
+**La connexion renvoie « Identifiants invalides » alors que le mot de passe est bon**
+Le compte est probablement verrouillé : cinq tentatives infructueuses le
+bloquent quinze minutes. La réponse ne le dit pas, et c'est délibéré — la
+distinguer d'un mot de passe faux permettrait d'énumérer les comptes
+existants. Le diagnostic, lui, a le droit de le lire :
+
+```bash
+npm run doctor      # signale les comptes verrouillés et le temps restant
+npm run db:unlock   # lève le verrou immédiatement (développement uniquement)
+```
+
 **`role "sanarys" does not exist`**
 Le rôle n'a pas été créé : reprenez l'étape 3.
 

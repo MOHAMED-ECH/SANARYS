@@ -23,7 +23,8 @@
     "db:create": "bash scripts/db-create.sh",
     "db:generate": "npm run prisma:generate -w @sanarys/db",
     "db:migrate": "npm run prisma:migrate -w @sanarys/db",
-    "db:seed": "npm run seed -w @sanarys/db"
+    "db:seed": "npm run seed -w @sanarys/db",
+    "db:unlock": "node scripts/db-unlock.mjs"
   },
   "devDependencies": {
     "typescript": "^5.6.3",
