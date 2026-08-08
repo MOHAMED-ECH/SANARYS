@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { color } from "@sanarys/design-tokens";
 
 /**
  * Marque SANARYS. Le monogramme evoque un point d'ancrage rayonnant :
@@ -12,15 +13,15 @@ export function Logo({ onDark = false, className }: { onDark?: boolean | undefin
           cx="16"
           cy="16"
           r="14"
-          stroke={onDark ? "#128796" : "#0E6E7A"}
+          stroke={onDark ? color.petrol[500] : color.petrol[600]}
           strokeWidth="1.5"
           strokeOpacity="0.35"
         />
-        <circle cx="16" cy="16" r="9" stroke={onDark ? "#128796" : "#0E6E7A"} strokeWidth="1.5" />
-        <circle cx="16" cy="16" r="4.5" fill="#B5652C" />
+        <circle cx="16" cy="16" r="9" stroke={onDark ? color.petrol[500] : color.petrol[600]} strokeWidth="1.5" />
+        <circle cx="16" cy="16" r="4.5" fill={color.copper[500]} />
         <path
           d="M16 13.6v4.8M13.6 16h4.8"
-          stroke="#FFFFFF"
+          stroke={color.mist.white}
           strokeWidth="1.6"
           strokeLinecap="round"
         />

@@ -4,6 +4,15 @@ import { useEffect, useState } from "react";
 import clsx from "clsx";
 import type { ContractDto, OrganizationDto, ReportDto } from "@/lib/auth-api";
 import { authApi } from "@/lib/auth-api";
+import { IconTrendDown, IconTrendUp } from "@/components/ui/icons";
+import {
+  Sparkline,
+  TrendChart,
+  computeTrend,
+  formatPeriodLong,
+  type Direction,
+  type Point,
+} from "./charts";
 
 const MODULE_LABELS: Record<string, string> = {
   AMBULANCE: "Ambulance dédiée",
@@ -12,26 +21,45 @@ const MODULE_LABELS: Record<string, string> = {
   INFIRMERIE: "Infirmerie centrale",
 };
 
-const KPI_LABELS: Record<string, { label: string; format: (value: number) => string; hint: string }> = {
+const KPI_LABELS: Record<
+  string,
+  {
+    label: string;
+    format: (value: number) => string;
+    hint: string;
+    /**
+     * Sens dans lequel une hausse est une bonne nouvelle.
+     *
+     * Sans cette information, un nombre d'interventions en hausse s'afficherait
+     * en vert et laisserait croire a une amelioration, alors qu'il signale
+     * simplement plus d'accidents. Ce compteur est donc neutre.
+     */
+    direction: Direction;
+  }
+> = {
   interventionCount: {
     label: "Interventions",
     format: (value) => String(value),
     hint: "Nombre total d'interventions du dispositif sur la période, toutes entreprises membres confondues.",
+    direction: "neutral",
   },
   availabilityRate: {
     label: "Disponibilité",
     format: (value) => `${(value * 100).toFixed(1)} %`,
     hint: "Part des heures d'activité durant lesquelles le dispositif contractualisé était effectivement opérationnel.",
+    direction: "higher",
   },
   avgResponseTimeMinutes: {
     label: "Délai moyen d'intervention",
     format: (value) => `${value.toFixed(1)} min`,
     hint: "Moyenne des délais entre l'appel et l'arrivée sur site, mesurée sur la période.",
+    direction: "lower",
   },
   trainingSessionsHeld: {
     label: "Sessions de formation",
     format: (value) => String(value),
     hint: "Sessions de formation aux gestes de secours animées sur la période.",
+    direction: "higher",
   },
 };
 
@@ -103,56 +131,68 @@ export function DashboardView({ organizationId }: { organizationId: string }) {
   const reports = useAsync<ReportDto[]>(() => authApi.reports(organizationId), [organizationId]);
 
   const activeContract = contracts.data?.find((c) => c.status === "ACTIVE") ?? null;
-  const latestReport = reports.data?.[0] ?? null;
+  // L'API rend les rapports du plus recent au plus ancien ; les courbes se
+  // lisent dans l'autre sens.
+  const chronologie = [...(reports.data ?? [])].reverse();
+  const dernier = chronologie[chronologie.length - 1] ?? null;
 
   return (
-    <div className="space-y-8">
-      <Panel loading={org.loading} error={org.error}>
-        {org.data ? (
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Stat label="Organisation" value={org.data.name} hint={typeLabel(org.data.type)} />
-            <Stat
-              label="Entreprises membres"
-              value={String(org.data.memberCount)}
-              hint={org.data.industrialZoneName ?? "Zone non renseignée"}
-            />
-            <Stat
-              label="Modules actifs"
-              value={activeContract ? String(activeContract.modules.length) : "—"}
-              hint={
-                activeContract
-                  ? activeContract.modules.map((m) => MODULE_LABELS[m] ?? m).join(" · ")
-                  : "Aucun contrat actif"
-              }
-            />
-          </div>
-        ) : null}
-      </Panel>
-
-      <section>
-        <h2 className="font-heading text-lg font-bold text-navy-950">
-          Dernier rapport mensuel publié
+    <div className="space-y-10">
+      <section aria-labelledby="titre-dispositif">
+        <h2 id="titre-dispositif" className="sr-only">
+          Votre dispositif
         </h2>
-        <Panel loading={reports.loading} error={reports.error}>
-          {latestReport ? (
-            <div className="mt-4">
-              <p className="text-sm text-slate-600">
-                Période {formatPeriod(latestReport.period)}
-                {latestReport.publishedAt
-                  ? ` · publié le ${new Date(latestReport.publishedAt).toLocaleDateString("fr-FR")}`
-                  : ""}
-              </p>
-              <KpiGrid kpi={latestReport.kpi} />
+        <Panel loading={org.loading} error={org.error}>
+          {org.data ? (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Stat
+                label="Entreprises membres"
+                value={String(org.data.memberCount)}
+                hint={org.data.industrialZoneName ?? "Zone non renseignée"}
+              />
+              <Stat
+                label="Modules actifs"
+                value={activeContract ? String(activeContract.modules.length) : "—"}
+                hint={
+                  activeContract
+                    ? activeContract.modules.map((m) => MODULE_LABELS[m] ?? m).join(" · ")
+                    : "Aucun contrat actif"
+                }
+              />
+              <Stat
+                label="Rapports publiés"
+                value={String(chronologie.length)}
+                hint={
+                  dernier ? `Dernier : ${formatPeriodLong(dernier.period)}` : "Aucun à ce jour"
+                }
+              />
             </div>
+          ) : null}
+        </Panel>
+      </section>
+
+      <section aria-labelledby="titre-indicateurs">
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <h2 id="titre-indicateurs" className="font-heading text-lg font-bold text-navy-950">
+            Indicateurs du dispositif
+          </h2>
+          {dernier ? (
+            <p className="text-sm text-slate-600">
+              Période {formatPeriodLong(dernier.period)}
+              {chronologie.length > 1 ? `, comparée au mois précédent` : ""}
+            </p>
+          ) : null}
+        </div>
+
+        <Panel loading={reports.loading} error={reports.error}>
+          {dernier ? (
+            <TrendGrid history={chronologie} />
           ) : (
-            <div className="mt-4 rounded-lg border border-navy-950/10 bg-mist-white p-8 text-center">
-              <p className="font-heading font-semibold text-navy-950">
-                Aucun rapport publié pour le moment
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-slate-600">
-                Le premier rapport mensuel est publié dans les cinq jours ouvrés suivant la fin du
-                premier mois complet d&apos;exploitation.
-              </p>
+            <div className="mt-4">
+              <EmptyState
+                title="Aucun rapport publié pour le moment"
+                message="Le premier rapport mensuel est publié dans les cinq jours ouvrés suivant la fin du premier mois complet d'exploitation."
+              />
             </div>
           )}
         </Panel>
@@ -168,6 +208,104 @@ export function DashboardView({ organizationId }: { organizationId: string }) {
     </div>
   );
 }
+
+/**
+ * Les quatre indicateurs, chacun avec sa variation et sa courbe sur douze mois.
+ */
+function TrendGrid({ history }: { history: readonly ReportDto[] }) {
+  const dernier = history[history.length - 1]!;
+  const cles = Object.keys(dernier.kpi).filter((cle) => KPI_LABELS[cle]);
+
+  if (cles.length === 0) {
+    return <p className="mt-4 text-sm text-slate-600">Aucun indicateur disponible sur cette période.</p>;
+  }
+
+  return (
+    <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {cles.map((cle) => {
+        const meta = KPI_LABELS[cle]!;
+        const points: Point[] = history
+          .filter((r) => typeof r.kpi[cle] === "number")
+          .map((r) => ({ period: r.period, value: r.kpi[cle] as number }));
+        const valeur = points[points.length - 1]?.value;
+
+        return (
+          <KpiCard
+            key={cle}
+            label={meta.label}
+            hint={meta.hint}
+            value={valeur === undefined ? "—" : meta.format(valeur)}
+            points={points}
+            direction={meta.direction}
+            format={meta.format}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function KpiCard({
+  label,
+  hint,
+  value,
+  points,
+  direction,
+  format,
+}: {
+  label: string;
+  hint: string;
+  value: string;
+  points: readonly Point[];
+  direction: Direction;
+  format: (value: number) => string;
+}) {
+  const trend = computeTrend(points, direction, format);
+
+  return (
+    <article className="flex flex-col rounded-lg border border-navy-950/8 bg-mist-white p-5">
+      <h3 className="font-heading text-sm font-semibold text-navy-950">{label}</h3>
+      <p className="mt-2 font-heading text-3xl font-extrabold tracking-tight text-navy-950">
+        {value}
+      </p>
+
+      {trend ? (
+        // Fleche + signe + libelle : la couleur ne fait que confirmer une
+        // information deja lisible sans elle. Rouge et vert sont quasi
+        // indiscernables en deuteranopie.
+        <p className="mt-2 flex items-center gap-1.5 text-sm">
+          <TrendIcon sentiment={trend.sentiment} label={trend.deltaLabel} />
+          <span className="font-medium text-navy-950">{trend.deltaLabel}</span>
+          <span className="text-slate-400">vs mois précédent</span>
+        </p>
+      ) : null}
+
+      <div className="mt-4">
+        <Sparkline points={points} />
+      </div>
+
+      <p className="mt-3 text-xs leading-relaxed text-slate-400">{hint}</p>
+    </article>
+  );
+}
+
+function TrendIcon({
+  sentiment,
+  label,
+}: {
+  sentiment: "good" | "bad" | "neutral";
+  label: string;
+}) {
+  const monte = label.startsWith("+");
+  const teinte =
+    sentiment === "good" ? "text-success" : sentiment === "bad" ? "text-danger" : "text-slate-400";
+
+  if (label === "stable") {
+    return <span aria-hidden="true" className="text-slate-400">→</span>;
+  }
+  return monte ? <IconTrendUp className={teinte} /> : <IconTrendDown className={teinte} />;
+}
+
 
 // --- Contrats --------------------------------------------------------------
 
@@ -247,27 +385,113 @@ export function ContractsView({ organizationId }: { organizationId: string }) {
 
 export function ReportsView({ organizationId }: { organizationId: string }) {
   const reports = useAsync<ReportDto[]>(() => authApi.reports(organizationId), [organizationId]);
+  const [indicateur, setIndicateur] = useState<string>("availabilityRate");
+
+  // Du plus ancien au plus recent : c'est le sens de lecture d'une courbe.
+  const chronologie = [...(reports.data ?? [])].reverse();
+  const meta = KPI_LABELS[indicateur];
+
+  const points: Point[] = chronologie
+    .filter((r) => typeof r.kpi[indicateur] === "number")
+    .map((r) => ({ period: r.period, value: r.kpi[indicateur] as number }));
 
   return (
     <Panel loading={reports.loading} error={reports.error}>
-      {reports.data && reports.data.length > 0 ? (
-        <ul className="space-y-5">
-          {reports.data.map((report) => (
-            <li key={report.id} className="surface-card p-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="font-heading text-lg font-bold text-navy-950">
-                  {formatPeriod(report.period)}
+      {reports.data && reports.data.length > 0 && meta ? (
+        <div className="space-y-10">
+          <section className="surface-card p-6" aria-labelledby="titre-evolution">
+            <div className="flex flex-wrap items-baseline justify-between gap-4">
+              <div>
+                <h2 id="titre-evolution" className="font-heading text-lg font-bold text-navy-950">
+                  Évolution — {meta.label}
                 </h2>
-                {report.publishedAt ? (
-                  <span className="text-sm text-slate-600">
-                    Publié le {new Date(report.publishedAt).toLocaleDateString("fr-FR")}
-                  </span>
-                ) : null}
+                <p className="mt-1 text-sm text-slate-600">
+                  {points.length} période{points.length > 1 ? "s" : ""} publiée
+                  {points.length > 1 ? "s" : ""}. Survolez la courbe pour lire une valeur.
+                </p>
               </div>
-              <KpiGrid kpi={report.kpi} />
-            </li>
-          ))}
-        </ul>
+
+              {/* Un seul indicateur a la fois : superposer des mesures d'echelles
+                  differentes sur deux axes rendrait la lecture trompeuse. */}
+              <label className="text-sm">
+                <span className="sr-only">Indicateur affiché</span>
+                <select
+                  value={indicateur}
+                  onChange={(event) => setIndicateur(event.target.value)}
+                  className="rounded-md border border-navy-950/15 bg-mist-white px-3 py-2 text-sm text-navy-950"
+                >
+                  {Object.entries(KPI_LABELS).map(([cle, valeur]) => (
+                    <option key={cle} value={cle}>
+                      {valeur.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <TrendChart points={points} format={meta.format} label={meta.label} />
+            <p className="mt-4 text-sm leading-relaxed text-slate-600">{meta.hint}</p>
+          </section>
+
+          <section aria-labelledby="titre-historique">
+            <h2 id="titre-historique" className="font-heading text-lg font-bold text-navy-950">
+              Historique mensuel
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Les valeurs exactes de chaque période. C&apos;est aussi la version lisible de la
+              courbe ci-dessus.
+            </p>
+
+            <div className="mt-4 overflow-x-auto rounded-lg border border-navy-950/8 bg-mist-white">
+              <table className="w-full min-w-[42rem] text-sm">
+                <caption className="sr-only">
+                  Indicateurs mensuels agrégés, de la période la plus récente à la plus ancienne
+                </caption>
+                <thead>
+                  <tr className="border-b border-navy-950/8 text-start">
+                    <th scope="col" className="px-5 py-3 text-start font-heading font-semibold text-navy-950">
+                      Période
+                    </th>
+                    {Object.values(KPI_LABELS).map((valeur) => (
+                      <th
+                        key={valeur.label}
+                        scope="col"
+                        className="px-5 py-3 text-end font-heading font-semibold text-navy-950"
+                      >
+                        {valeur.label}
+                      </th>
+                    ))}
+                    <th scope="col" className="px-5 py-3 text-end font-heading font-semibold text-navy-950">
+                      Publié le
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reports.data.map((report) => (
+                    <tr key={report.id} className="border-b border-navy-950/5 last:border-0">
+                      <th scope="row" className="px-5 py-3 text-start font-medium text-navy-950">
+                        {formatPeriodLong(report.period)}
+                      </th>
+                      {Object.entries(KPI_LABELS).map(([cle, valeur]) => {
+                        const brut = report.kpi[cle];
+                        return (
+                          <td key={cle} className="px-5 py-3 text-end tabular-nums text-slate-600">
+                            {typeof brut === "number" ? valeur.format(brut) : "—"}
+                          </td>
+                        );
+                      })}
+                      <td className="px-5 py-3 text-end text-slate-400">
+                        {report.publishedAt
+                          ? new Date(report.publishedAt).toLocaleDateString("fr-FR")
+                          : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
       ) : (
         <EmptyState
           title="Aucun rapport publié"

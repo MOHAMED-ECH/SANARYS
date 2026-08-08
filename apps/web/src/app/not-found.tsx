@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { ButtonLink } from "@/components/ui/Button";
+import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
 
 /**
  * Page 404. Un visiteur perdu doit repartir vers une action utile plutot que
@@ -26,6 +28,9 @@ const SHORTCUTS = [
 
 export default function NotFound() {
   return (
+    <>
+      <Header />
+      <main id="contenu">
     <div className="bg-mist-50">
       <div className="container-page py-20 md:py-28">
         <div className="mx-auto max-w-2xl text-center">
@@ -65,5 +70,8 @@ export default function NotFound() {
         </p>
       </div>
     </div>
+      </main>
+      <Footer />
+    </>
   );
 }

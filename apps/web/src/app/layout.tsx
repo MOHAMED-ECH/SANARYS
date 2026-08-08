@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import "@fontsource-variable/manrope";
 import "@/styles/globals.css";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
 import { SITE } from "@/content/site";
 
 export const metadata: Metadata = {
@@ -31,9 +29,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <a href="#contenu" className="skip-link">
           Aller au contenu principal
         </a>
-        <Header />
-        <main id="contenu">{children}</main>
-        <Footer />
+        {/* Ni en-tete ni pied de page ici : chaque espace apporte le sien.
+            Le site public via le groupe (site), le portail et la console via
+            leurs propres layouts. */}
+        {children}
       </body>
     </html>
   );

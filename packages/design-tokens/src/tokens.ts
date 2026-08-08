@@ -44,9 +44,21 @@ export const color = {
     600: "#4A5568",
     900: "#1A202C",
   },
+  // Couleurs d'etat. Elles servent aussi de couleur de TEXTE (messages
+  // d'erreur, badges de priorite, mentions en attente), et doivent donc tenir
+  // le seuil AA de 4,5:1 sur nos deux fonds clairs — pas seulement les 3:1
+  // exiges d'un aplat graphique.
+  //
+  // Les valeurs initiales ne le tenaient pas : success plafonnait a 3,90:1 et
+  // warning a 2,95:1 sur mist-50. Toutes deux ont ete assombries a teinte et
+  // saturation constantes jusqu'au seuil. Meme correction que celle deja
+  // appliquee au cuivre, pour la meme raison.
   status: {
-    success: "#1E8E5A",
-    warning: "#C9821C",
+    /** 4,59:1 sur mist-50, 4,87:1 sur blanc. */
+    success: "#1B8152",
+    /** 4,53:1 sur mist-50, 4,81:1 sur blanc. */
+    warning: "#9E6616",
+    /** 4,64:1 sur mist-50 : deja conforme, inchangee. */
     danger: "#C4453A",
   },
 } as const;

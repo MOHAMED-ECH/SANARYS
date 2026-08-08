@@ -116,6 +116,61 @@ const SIMULATION_RULESET_V0 = {
 
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 
+/**
+ * Douze mois de rapports mensuels pour l'organisation donnee.
+ *
+ * Un rapport unique ne permettait d'afficher aucune evolution : le portail
+ * montrait quatre nombres sans point de comparaison, ce qui est precisement ce
+ * qu'un client ne peut pas exploiter. Il faut un historique pour que « en
+ * hausse », « en baisse » et une courbe aient un sens.
+ *
+ * Les valeurs sont fabriquees, mais pas au hasard : elles suivent une montee en
+ * charge plausible — le dispositif se rode, la disponibilite progresse, le
+ * delai d'intervention se reduit — avec des irregularites, parce qu'une courbe
+ * parfaitement lisse ne ressemble a aucune realite d'exploitation et sonnerait
+ * faux devant un prospect.
+ */
+async function seedMonthlyReports(organizationId: string) {
+  /** Le mois le plus recent en premier. */
+  const MOIS = [
+    { period: "2026-07", interventions: 12, dispo: 0.998, delai: 8.4, formations: 2 },
+    { period: "2026-06", interventions: 15, dispo: 0.995, delai: 8.6, formations: 1 },
+    { period: "2026-05", interventions: 9, dispo: 0.997, delai: 8.9, formations: 3 },
+    { period: "2026-04", interventions: 14, dispo: 0.991, delai: 9.2, formations: 1 },
+    { period: "2026-03", interventions: 18, dispo: 0.989, delai: 9.4, formations: 2 },
+    { period: "2026-02", interventions: 11, dispo: 0.993, delai: 9.1, formations: 0 },
+    { period: "2026-01", interventions: 16, dispo: 0.986, delai: 9.8, formations: 2 },
+    { period: "2025-12", interventions: 21, dispo: 0.982, delai: 10.3, formations: 1 },
+    { period: "2025-11", interventions: 13, dispo: 0.984, delai: 10.1, formations: 2 },
+    { period: "2025-10", interventions: 17, dispo: 0.978, delai: 10.9, formations: 1 },
+    { period: "2025-09", interventions: 10, dispo: 0.974, delai: 11.4, formations: 0 },
+    { period: "2025-08", interventions: 8, dispo: 0.969, delai: 12.1, formations: 1 },
+  ] as const;
+
+  for (const mois of MOIS) {
+    // Publie le premier du mois suivant.
+    const [annee, m] = mois.period.split("-").map(Number) as [number, number];
+    const publishedAt = new Date(Date.UTC(m === 12 ? annee + 1 : annee, m === 12 ? 0 : m, 1));
+
+    await prisma.report.upsert({
+      where: { id: `seed-report-${mois.period}` },
+      update: {},
+      create: {
+        id: `seed-report-${mois.period}`,
+        organizationId,
+        period: mois.period,
+        kpiJson: {
+          interventionCount: mois.interventions,
+          availabilityRate: mois.dispo,
+          avgResponseTimeMinutes: mois.delai,
+          trainingSessionsHeld: mois.formations,
+        },
+        publishedAt,
+      },
+    });
+  }
+}
+
 async function main() {
   console.log("Seed: zones industrielles...");
   const zones = await Promise.all(
@@ -266,22 +321,8 @@ async function main() {
     create: { contractId: contract.id, organizationId: pmeB.id, shareRatio: 0.18 },
   });
 
-  await prisma.report.upsert({
-    where: { id: "seed-report-2026-07" },
-    update: {},
-    create: {
-      id: "seed-report-2026-07",
-      organizationId: groupement.id,
-      period: "2026-07",
-      kpiJson: {
-        interventionCount: 12,
-        availabilityRate: 0.998,
-        avgResponseTimeMinutes: 8.4,
-        trainingSessionsHeld: 2,
-      },
-      publishedAt: new Date("2026-08-01"),
-    },
-  });
+  console.log("Seed: historique de rapports mensuels...");
+  await seedMonthlyReports(groupement.id);
 
   console.log("Seed: simulation de demo (token de reprise hashe)...");
   const demoResumeToken = randomBytes(32).toString("base64url");
