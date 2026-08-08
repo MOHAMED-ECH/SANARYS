@@ -50,11 +50,13 @@ export function createSimulationsModule(deps: SimulationsModuleDependencies): Si
 
   return {
     startSimulation: new StartSimulationUseCase(core),
-    saveSimulationStep: new SaveSimulationStepUseCase({ simulations }),
+    saveSimulationStep: new SaveSimulationStepUseCase({ simulations, clock, tokens }),
     resumeSimulation: new ResumeSimulationUseCase({ simulations, clock, tokens }),
     completeSimulation: new CompleteSimulationUseCase(core),
     generateSimulationSummary: new GenerateSimulationSummaryUseCase({
       simulations,
+      clock,
+      tokens,
       summaries: new PdfSummaryGenerator(),
       archive: new SimulationDocumentArchive(deps.prisma, deps.storage),
     }),

@@ -63,15 +63,21 @@ export class StartSimulationUseCase {
 }
 
 export class SaveSimulationStepUseCase {
-  constructor(private readonly deps: Pick<Dependencies, "simulations">) {}
+  constructor(private readonly deps: Pick<Dependencies, "simulations" | "clock" | "tokens">) {}
 
   async execute(command: {
     id: SimulationId;
+    resumeToken: string;
     step: string;
     data: Record<string, unknown>;
   }): Promise<void> {
     const simulation = await this.deps.simulations.findById(command.id);
     if (!simulation) throw new SimulationNotFoundError();
+
+    simulation.assertResumableWith(
+      this.deps.tokens.hash(command.resumeToken),
+      this.deps.clock.now(),
+    );
 
     // L'entite valide l'etape et produit le nouvel etat d'entree.
     const nextInput = simulation.recordStep(command.step, command.data);
@@ -107,9 +113,14 @@ export class ResumeSimulationUseCase {
 export class CompleteSimulationUseCase {
   constructor(private readonly deps: Dependencies) {}
 
-  async execute(command: { id: SimulationId }): Promise<SimulationResult> {
+  async execute(command: { id: SimulationId; resumeToken: string }): Promise<SimulationResult> {
     const simulation = await this.deps.simulations.findById(command.id);
     if (!simulation) throw new SimulationNotFoundError();
+
+    simulation.assertResumableWith(
+      this.deps.tokens.hash(command.resumeToken),
+      this.deps.clock.now(),
+    );
 
     // Une simulation deja terminee restitue son resultat fige, sans recalcul.
     const existing = simulation.result;
@@ -118,7 +129,9 @@ export class CompleteSimulationUseCase {
     const parsed = SimulationInputCompleteSchema.safeParse(simulation.input);
     if (!parsed.success) throw new SimulationIncompleteError();
 
-    const ruleSet = await this.deps.ruleSets.findActive();
+    // Le ruleset est celui choisi a la creation de la simulation. Changer le
+    // ruleset actif ne doit jamais alterer une simulation deja ouverte.
+    const ruleSet = await this.deps.ruleSets.findById(simulation.snapshot.ruleSetId);
     if (!ruleSet) throw new NoActiveRuleSetError();
 
     const now = this.deps.clock.now();
@@ -136,15 +149,23 @@ export class CompleteSimulationUseCase {
 
 export class GenerateSimulationSummaryUseCase {
   constructor(
-    private readonly deps: Pick<Dependencies, "simulations"> & {
+    private readonly deps: Pick<Dependencies, "simulations" | "clock" | "tokens"> & {
       readonly summaries: SummaryGeneratorPort;
       readonly archive: DocumentArchivePort;
     },
   ) {}
 
-  async execute(command: { id: SimulationId }): Promise<SimulationSummaryDocument> {
+  async execute(command: {
+    id: SimulationId;
+    resumeToken: string;
+  }): Promise<SimulationSummaryDocument> {
     const simulation = await this.deps.simulations.findById(command.id);
     if (!simulation) throw new SimulationSummaryUnavailableError();
+
+    simulation.assertResumableWith(
+      this.deps.tokens.hash(command.resumeToken),
+      this.deps.clock.now(),
+    );
 
     const result = simulation.result;
     if (!simulation.isCompleted || !result) {

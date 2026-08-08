@@ -116,4 +116,15 @@ export class PrismaRuleSetRepository implements RuleSetRepository {
       definition: row.rulesJson as unknown as RuleSetDefinition,
     };
   }
+
+  async findById(id: string): Promise<ActiveRuleSet | null> {
+    const row = await this.prisma.simulationRuleSet.findUnique({ where: { id } });
+    if (!row) return null;
+
+    return {
+      id: asRuleSetId(row.id),
+      version: row.version,
+      definition: row.rulesJson as unknown as RuleSetDefinition,
+    };
+  }
 }

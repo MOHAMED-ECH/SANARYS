@@ -2,6 +2,7 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { CreateLeadRequestSchema, LeadResponseSchema } from "@sanarys/schemas";
 import { errorResponses } from "../../../lib/http.js";
+import { replyWithDomainError } from "../../../shared/http/error-mapper.js";
 import type { LeadsModule } from "../index.js";
 
 /**
@@ -22,15 +23,19 @@ export function createLeadsRoutes(module: LeadsModule): FastifyPluginAsyncZod {
         },
       },
       async (request, reply) => {
-        const { lead, isNew } = await module.submitLead.execute(request.body);
+        try {
+          const { lead, isNew } = await module.submitLead.execute(request.body);
 
-        app.log.info({ leadId: lead.id, isNew, priority: lead.priority }, "lead enregistre");
+          app.log.info({ leadId: lead.id, isNew, priority: lead.priority }, "lead enregistre");
 
-        return reply.code(201).send({
-          id: lead.id,
-          status: lead.status,
-          createdAt: lead.createdAt.toISOString(),
-        });
+          return reply.code(201).send({
+            id: lead.id,
+            status: lead.status,
+            createdAt: lead.createdAt.toISOString(),
+          });
+        } catch (error) {
+          return replyWithDomainError(reply, error);
+        }
       },
     );
 

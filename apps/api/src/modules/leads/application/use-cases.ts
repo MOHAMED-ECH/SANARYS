@@ -1,5 +1,6 @@
 import type { CrmPort } from "../../../integrations/crm/index.js";
 import type { NotificationPort } from "../../../integrations/notifications/index.js";
+import { InvalidInputError } from "../../../shared/errors/domain-error.js";
 import type { ClockPort } from "../../../shared/time/system-clock.js";
 import { LeadNotFoundError } from "../domain/errors.js";
 import {
@@ -19,9 +20,16 @@ import type { LeadRepository, LeadSnapshot, LeadSubmission, SimulationFactsPort 
 interface SubmitDependencies {
   readonly leads: LeadRepository;
   readonly simulationFacts: SimulationFactsPort;
+  readonly tokens: { hash(token: string): string };
   readonly crm: CrmPort;
   readonly notifications: NotificationPort;
   readonly clock: ClockPort;
+}
+
+class InvalidSimulationLinkError extends InvalidInputError {
+  constructor() {
+    super("SIMULATION_LINK_INVALID", "La simulation rattachee est introuvable ou expiree.");
+  }
 }
 
 export interface SubmitLeadResult {
@@ -36,9 +44,16 @@ export class SubmitLeadUseCase {
     const dedupeKey = buildDedupeKey(submission.contactEmail, submission.companyName);
     const now = this.deps.clock.now();
 
-    let facts: ScoringFacts = { hasSimulation: Boolean(submission.simulationId) };
+    let facts: ScoringFacts = { hasSimulation: false };
     if (submission.simulationId) {
-      const fromSimulation = await this.deps.simulationFacts.factsFor(submission.simulationId);
+      if (!submission.simulationResumeToken) throw new InvalidSimulationLinkError();
+
+      const fromSimulation = await this.deps.simulationFacts.factsFor({
+        simulationId: submission.simulationId,
+        resumeTokenHash: this.deps.tokens.hash(submission.simulationResumeToken),
+        now,
+      });
+      if (!fromSimulation) throw new InvalidSimulationLinkError();
       facts = { ...fromSimulation, hasSimulation: true };
     }
 

@@ -2,6 +2,7 @@ import type { PrismaClient } from "@sanarys/db";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { CrmPort } from "../../integrations/crm/index.js";
 import type { NotificationPort } from "../../integrations/notifications/index.js";
+import { Sha256TokenGenerator } from "../../shared/cryptography/token-generator.js";
 import { SystemClock, type ClockPort } from "../../shared/time/system-clock.js";
 import {
   CheckLeadExistsUseCase,
@@ -38,11 +39,13 @@ export interface LeadsModuleDependencies {
 
 export function createLeadsModule(deps: LeadsModuleDependencies): LeadsModule {
   const leads = new PrismaLeadRepository(deps.prisma);
+  const tokens = new Sha256TokenGenerator();
 
   return {
     submitLead: new SubmitLeadUseCase({
       leads,
       simulationFacts: new PrismaSimulationFacts(deps.prisma),
+      tokens,
       crm: deps.crm,
       notifications: deps.notifications,
       clock: deps.clock ?? new SystemClock(),

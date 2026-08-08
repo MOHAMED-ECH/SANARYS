@@ -156,6 +156,7 @@ export const StartSimulationResponseSchema = z.object({
 
 export const PatchSimulationRequestSchema = z.object({
   step: z.enum(["zone", "companies", "activity", "schedule", "existingSetup", "expectations", "contact"]),
+  resumeToken: z.string().min(10),
   data: z.record(z.string(), z.unknown()),
 });
 
@@ -173,4 +174,8 @@ export const CompleteSimulationResponseSchema = z.object({
   id: z.string(),
   result: SimulationResultSchema,
   pdfUrl: z.string(),
+});
+
+export const CompleteSimulationRequestSchema = z.object({
+  resumeToken: z.string().min(10),
 });

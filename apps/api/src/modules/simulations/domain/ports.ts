@@ -36,6 +36,7 @@ export interface SimulationRepository {
 
 export interface RuleSetRepository {
   findActive(): Promise<ActiveRuleSet | null>;
+  findById(id: RuleSetId): Promise<ActiveRuleSet | null>;
 }
 
 /** Generation du recapitulatif : un port, plusieurs implementations possibles. */

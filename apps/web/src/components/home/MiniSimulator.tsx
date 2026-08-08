@@ -47,12 +47,12 @@ export function MiniSimulator() {
     setError(null);
     try {
       const { id, resumeToken } = await api.startSimulation();
-      await api.saveStep(id, "companies", {
+      await api.saveStep(id, resumeToken, "companies", {
         numberOfCompanies: companies,
         sizeBrackets: ["B50_150"],
         totalHeadcount: headcount,
       });
-      await api.saveStep(id, "activity", {
+      await api.saveStep(id, resumeToken, "activity", {
         sectors: ["AUTRE"],
         riskLevel: risk,
         hasHazardousMaterials: risk === "HIGH",

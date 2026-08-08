@@ -14,6 +14,7 @@ export const CreateLeadRequestSchema = z.object({
   consentMarketing: z.boolean(),
   consentVersion: z.string().default("2026.08.0"),
   simulationId: z.string().optional(),
+  simulationResumeToken: z.string().min(10).optional(),
 });
 export type CreateLeadRequest = z.infer<typeof CreateLeadRequestSchema>;
 

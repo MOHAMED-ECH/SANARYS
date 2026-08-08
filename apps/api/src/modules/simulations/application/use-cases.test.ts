@@ -152,6 +152,25 @@ class StubRuleSetRepository implements RuleSetRepository {
   async findActive(): Promise<ActiveRuleSet | null> {
     return this.ruleSet;
   }
+
+  async findById(id: ReturnType<typeof asRuleSetId>): Promise<ActiveRuleSet | null> {
+    return this.ruleSet?.id === id ? this.ruleSet : null;
+  }
+}
+
+class VersionedRuleSetRepository implements RuleSetRepository {
+  constructor(
+    private readonly active: ActiveRuleSet,
+    private readonly byId: readonly ActiveRuleSet[],
+  ) {}
+
+  async findActive(): Promise<ActiveRuleSet | null> {
+    return this.active;
+  }
+
+  async findById(id: ReturnType<typeof asRuleSetId>): Promise<ActiveRuleSet | null> {
+    return this.byId.find((ruleSet) => ruleSet.id === id) ?? null;
+  }
 }
 
 const ACTIVE_RULESET: ActiveRuleSet = {
@@ -231,6 +250,7 @@ describe("SaveSimulationStepUseCase", () => {
     const deps = buildDeps([snapshotOf()]);
     await new SaveSimulationStepUseCase(deps).execute({
       id: asSimulationId("sim-1"),
+      resumeToken: "jeton-de-test",
       step: "zone",
       data: { city: "Bouskoura", zoneName: "ZI Bouskoura" },
     });
@@ -245,10 +265,23 @@ describe("SaveSimulationStepUseCase", () => {
     await expect(
       new SaveSimulationStepUseCase(deps).execute({
         id: asSimulationId("sim-1"),
+        resumeToken: "jeton-de-test",
         step: "etape-inventee",
         data: {},
       }),
     ).rejects.toThrow(/Étape inconnue/);
+  });
+
+  it("refuse de modifier une simulation avec un jeton erroné", async () => {
+    const deps = buildDeps([snapshotOf()]);
+    await expect(
+      new SaveSimulationStepUseCase(deps).execute({
+        id: asSimulationId("sim-1"),
+        resumeToken: "mauvais-jeton",
+        step: "zone",
+        data: {},
+      }),
+    ).rejects.toThrow(/invalide ou expiré/);
   });
 
   it("rejette une simulation inexistante", async () => {
@@ -256,6 +289,7 @@ describe("SaveSimulationStepUseCase", () => {
     await expect(
       new SaveSimulationStepUseCase(deps).execute({
         id: asSimulationId("inconnue"),
+        resumeToken: "jeton-de-test",
         step: "zone",
         data: {},
       }),
@@ -301,12 +335,61 @@ describe("CompleteSimulationUseCase", () => {
     const deps = buildDeps([snapshotOf({ input: COMPLETE_INPUT })]);
     const result = await new CompleteSimulationUseCase(deps).execute({
       id: asSimulationId("sim-1"),
+      resumeToken: "jeton-de-test",
     });
 
     expect(result.vehicleType.code).toBe("TYPE_B");
     expect(result.ruleSetVersion).toBe("2026.08.0");
     expect(result.generatedAt).toBe(NOW.toISOString());
     expect(deps.simulations.rows.get("sim-1")?.status).toBe("COMPLETED");
+  });
+
+  it("refuse de calculer avec un jeton erroné", async () => {
+    const deps = buildDeps([snapshotOf({ input: COMPLETE_INPUT })]);
+    await expect(
+      new CompleteSimulationUseCase(deps).execute({
+        id: asSimulationId("sim-1"),
+        resumeToken: "mauvais-jeton",
+      }),
+    ).rejects.toThrow(/invalide ou expiré/);
+  });
+
+  it("calcule avec le jeu de règles attaché, même si un autre est actif", async () => {
+    const attachedRuleSet: ActiveRuleSet = {
+      id: asRuleSetId("ruleset-1"),
+      version: "2026.08.0",
+      definition: RULESET_DEFINITION,
+    };
+    const activeRuleSet: ActiveRuleSet = {
+      id: asRuleSetId("ruleset-2"),
+      version: "2026.09.0",
+      definition: {
+        ...RULESET_DEFINITION,
+        vehicleType: [
+          {
+            id: "VEH-NEW",
+            status: "ACTIVE",
+            when: "default",
+            result: "TYPE_C",
+            rationale: "Nouvelle règle active.",
+          },
+        ],
+      },
+    };
+    const deps = {
+      simulations: new InMemorySimulationRepository([snapshotOf({ input: COMPLETE_INPUT })]),
+      ruleSets: new VersionedRuleSetRepository(activeRuleSet, [attachedRuleSet, activeRuleSet]),
+      clock: new FixedClock(NOW),
+      tokens: new StubTokenGenerator(),
+    };
+
+    const result = await new CompleteSimulationUseCase(deps).execute({
+      id: asSimulationId("sim-1"),
+      resumeToken: "jeton-de-test",
+    });
+
+    expect(result.ruleSetVersion).toBe("2026.08.0");
+    expect(result.vehicleType.ruleId).toBe("VEH-02");
   });
 
   it("ne recalcule JAMAIS une simulation déjà terminée", async () => {
@@ -326,6 +409,7 @@ describe("CompleteSimulationUseCase", () => {
 
     const result = await new CompleteSimulationUseCase(deps).execute({
       id: asSimulationId("sim-1"),
+      resumeToken: "jeton-de-test",
     });
 
     // Le résultat historique est restitué tel quel, malgré un ruleset plus récent.
@@ -336,7 +420,10 @@ describe("CompleteSimulationUseCase", () => {
   it("refuse de calculer une simulation incomplète", async () => {
     const deps = buildDeps([snapshotOf({ input: { zone: COMPLETE_INPUT.zone } })]);
     await expect(
-      new CompleteSimulationUseCase(deps).execute({ id: asSimulationId("sim-1") }),
+      new CompleteSimulationUseCase(deps).execute({
+        id: asSimulationId("sim-1"),
+        resumeToken: "jeton-de-test",
+      }),
     ).rejects.toThrow(/étapes du simulateur/);
   });
 });
@@ -368,13 +455,42 @@ describe("GenerateSimulationSummaryUseCase", () => {
     const simulations = new InMemorySimulationRepository([snapshotOf()]);
     const useCase = new GenerateSimulationSummaryUseCase({
       simulations,
+      clock: new FixedClock(NOW),
+      tokens: new StubTokenGenerator(),
       summaries: new StubSummaryGenerator(),
       archive: new StubArchive(),
     });
 
-    await expect(useCase.execute({ id: asSimulationId("sim-1") })).rejects.toThrow(
+    await expect(
+      useCase.execute({ id: asSimulationId("sim-1"), resumeToken: "jeton-de-test" }),
+    ).rejects.toThrow(
       /Aucun récapitulatif/,
     );
+  });
+
+  it("refuse de produire un récapitulatif avec un jeton erroné", async () => {
+    const completed: SimulationResult = {
+      ruleSetVersion: "2026.08.0",
+      vehicleType: { ruleId: "VEH-02", rationale: "Standard.", code: "TYPE_B" },
+      suggestedModules: [],
+      coverage: { ruleId: "COV-01", rationale: "…", targetLabel: "…", disclaimer: "…" },
+      costShare: { ruleId: "COST-01", rationale: "…", formula: "hybrid" },
+      assumptions: [],
+      generatedAt: NOW.toISOString(),
+    };
+    const useCase = new GenerateSimulationSummaryUseCase({
+      simulations: new InMemorySimulationRepository([
+        snapshotOf({ status: "COMPLETED", input: COMPLETE_INPUT, result: completed }),
+      ]),
+      clock: new FixedClock(NOW),
+      tokens: new StubTokenGenerator(),
+      summaries: new StubSummaryGenerator(),
+      archive: new StubArchive(),
+    });
+
+    await expect(
+      useCase.execute({ id: asSimulationId("sim-1"), resumeToken: "mauvais-jeton" }),
+    ).rejects.toThrow(/invalide ou expiré/);
   });
 
   it("n'archive qu'une seule fois, même sur plusieurs téléchargements", async () => {
@@ -394,12 +510,14 @@ describe("GenerateSimulationSummaryUseCase", () => {
     const archive = new StubArchive();
     const useCase = new GenerateSimulationSummaryUseCase({
       simulations,
+      clock: new FixedClock(NOW),
+      tokens: new StubTokenGenerator(),
       summaries: new StubSummaryGenerator(),
       archive,
     });
 
-    await useCase.execute({ id: asSimulationId("sim-1") });
-    await useCase.execute({ id: asSimulationId("sim-1") });
+    await useCase.execute({ id: asSimulationId("sim-1"), resumeToken: "jeton-de-test" });
+    await useCase.execute({ id: asSimulationId("sim-1"), resumeToken: "jeton-de-test" });
 
     expect(archive.calls).toBe(1);
   });

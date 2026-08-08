@@ -25,6 +25,7 @@ const storageKey = (id: string) => `sanarys.sim.${id}`;
  */
 export function useSimulator(initialSimulationId?: string) {
   const [simulationId, setSimulationId] = useState<string | null>(initialSimulationId ?? null);
+  const [resumeToken, setResumeToken] = useState<string | null>(null);
   const [input, setInput] = useState<SimulationInput>({});
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
@@ -44,6 +45,7 @@ export function useSimulator(initialSimulationId?: string) {
           const token = sessionStorage.getItem(storageKey(initialSimulationId));
           if (token) {
             const record = await api.resumeSimulation(initialSimulationId, token);
+            setResumeToken(token);
             setInput(record.input);
             setResult(record.result);
             setSimulationId(record.id);
@@ -60,6 +62,7 @@ export function useSimulator(initialSimulationId?: string) {
         const started = await api.startSimulation();
         sessionStorage.setItem(storageKey(started.id), started.resumeToken);
         setSimulationId(started.id);
+        setResumeToken(started.resumeToken);
         setStatus("ready");
         void api.track("start_simulation", { source: "simulateur" });
       } catch {
@@ -71,17 +74,17 @@ export function useSimulator(initialSimulationId?: string) {
 
   const saveStep = useCallback(
     async (key: StepKey, data: Record<string, unknown>) => {
-      if (!simulationId) return;
+      if (!simulationId || !resumeToken) return;
       setInput((previous) => ({ ...previous, [key]: data }));
       try {
-        await api.saveStep(simulationId, key, data);
+        await api.saveStep(simulationId, resumeToken, key, data);
         void api.track("complete_step", { step_id: key });
       } catch {
         // La progression reste en memoire : l'utilisateur n'est pas bloque.
         setError("Votre progression n'a pas pu être enregistrée sur nos serveurs.");
       }
     },
-    [simulationId],
+    [resumeToken, simulationId],
   );
 
   const next = useCallback(() => {
@@ -100,11 +103,11 @@ export function useSimulator(initialSimulationId?: string) {
   }, []);
 
   const complete = useCallback(async () => {
-    if (!simulationId) return;
+    if (!simulationId || !resumeToken) return;
     setStatus("computing");
     setError(null);
     try {
-      const response = await api.completeSimulation(simulationId);
+      const response = await api.completeSimulation(simulationId, resumeToken);
       setResult(response.result);
       setStatus("done");
       void api.track("view_result", {
@@ -117,10 +120,11 @@ export function useSimulator(initialSimulationId?: string) {
       setError(message);
       setStatus("ready");
     }
-  }, [simulationId]);
+  }, [resumeToken, simulationId]);
 
   return {
     simulationId,
+    resumeToken,
     input,
     result,
     stepIndex,

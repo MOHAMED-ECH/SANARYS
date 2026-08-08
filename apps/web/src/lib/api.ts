@@ -58,22 +58,23 @@ export const api = {
       body: JSON.stringify(industrialZoneId ? { industrialZoneId } : {}),
     }),
 
-  saveStep: (id: string, step: string, data: Record<string, unknown>) =>
+  saveStep: (id: string, resumeToken: string, step: string, data: Record<string, unknown>) =>
     request<{ ok: boolean }>(`/simulations/${id}`, {
       method: "PATCH",
-      body: JSON.stringify({ step, data }),
+      body: JSON.stringify({ step, resumeToken, data }),
     }),
 
   resumeSimulation: (id: string, resumeToken: string) =>
     request<SimulationRecord>(`/simulations/${id}?resumeToken=${encodeURIComponent(resumeToken)}`),
 
-  completeSimulation: (id: string) =>
+  completeSimulation: (id: string, resumeToken: string) =>
     request<{ id: string; result: SimulationResult; pdfUrl: string }>(
       `/simulations/${id}/complete`,
-      { method: "POST" },
+      { method: "POST", body: JSON.stringify({ resumeToken }) },
     ),
 
-  pdfUrl: (id: string) => `${BASE}/simulations/${id}/pdf`,
+  pdfUrl: (id: string, resumeToken: string) =>
+    `${BASE}/simulations/${id}/pdf?resumeToken=${encodeURIComponent(resumeToken)}`,
 
   createLead: (payload: CreateLeadRequest) =>
     request<{ id: string; status: string; createdAt: string }>("/leads", {

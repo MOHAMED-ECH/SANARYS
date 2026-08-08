@@ -94,7 +94,7 @@ export function SimulatorWizard({
   }
 
   async function handleRequestAudit() {
-    if (!simulator.simulationId || auditPending) return;
+    if (!simulator.simulationId || !simulator.resumeToken || auditPending) return;
     const contact = simulator.input.contact;
     const zone = simulator.input.zone;
     if (!contact) return;
@@ -113,6 +113,7 @@ export function SimulatorWizard({
         consentMarketing: contact.consent === true,
         consentVersion: contact.consentVersion ?? "2026.08.0",
         simulationId: simulator.simulationId,
+        simulationResumeToken: simulator.resumeToken,
       });
       await api.createAuditRequest({ leadId: lead.id });
       void api.track("request_audit", { type_organisation: "PME" });
@@ -138,7 +139,7 @@ export function SimulatorWizard({
   }
 
   // --- Résultat ------------------------------------------------------------
-  if (simulator.status === "done" && simulator.result && simulator.simulationId) {
+  if (simulator.status === "done" && simulator.result && simulator.simulationId && simulator.resumeToken) {
     return (
       <div>
         <h2 ref={headingRef} tabIndex={-1} className="sr-only">
@@ -162,6 +163,7 @@ export function SimulatorWizard({
 
         <SimulationResultView
           simulationId={simulator.simulationId}
+          resumeToken={simulator.resumeToken}
           input={simulator.input}
           result={simulator.result}
           onRequestAudit={handleRequestAudit}

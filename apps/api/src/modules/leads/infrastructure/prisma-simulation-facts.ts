@@ -14,8 +14,18 @@ import type { SimulationFactsPort } from "../domain/ports.js";
 export class PrismaSimulationFacts implements SimulationFactsPort {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async factsFor(simulationId: string): Promise<Omit<ScoringFacts, "hasSimulation"> | null> {
-    const simulation = await this.prisma.simulation.findUnique({ where: { id: simulationId } });
+  async factsFor(command: {
+    simulationId: string;
+    resumeTokenHash: string;
+    now: Date;
+  }): Promise<Omit<ScoringFacts, "hasSimulation"> | null> {
+    const simulation = await this.prisma.simulation.findFirst({
+      where: {
+        id: command.simulationId,
+        resumeTokenHash: command.resumeTokenHash,
+        resumeTokenExpiresAt: { gt: command.now },
+      },
+    });
     if (!simulation) return null;
 
     const input = (simulation.inputJson ?? {}) as Record<string, Record<string, unknown>>;

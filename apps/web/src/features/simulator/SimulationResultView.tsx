@@ -57,11 +57,13 @@ function costShareBreakdown(companies: number, headcount: number) {
 
 export function SimulationResultView({
   simulationId,
+  resumeToken,
   input,
   result,
   onRequestAudit,
 }: {
   simulationId: string;
+  resumeToken: string;
   input: SimulationInput;
   result: SimulationResult;
   onRequestAudit: () => void;
@@ -245,7 +247,7 @@ export function SimulationResultView({
           Demander un audit terrain gratuit
         </Button>
         <ButtonLink
-          href={api.pdfUrl(simulationId)}
+          href={api.pdfUrl(simulationId, resumeToken)}
           variant="secondary"
           size="lg"
           onClick={() => void api.track("download_resource", { asset_id: "simulation_pdf" })}

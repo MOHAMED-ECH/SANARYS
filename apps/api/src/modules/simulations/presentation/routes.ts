@@ -2,6 +2,7 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import {
   CompleteSimulationResponseSchema,
+  CompleteSimulationRequestSchema,
   PatchSimulationRequestSchema,
   SimulationRecordSchema,
   StartSimulationResponseSchema,
@@ -59,6 +60,7 @@ export function createSimulationsRoutes(module: SimulationsModule): FastifyPlugi
         try {
           await module.saveSimulationStep.execute({
             id: asSimulationId(request.params.id),
+            resumeToken: request.body.resumeToken,
             step: request.body.step,
             data: request.body.data,
           });
@@ -101,13 +103,17 @@ export function createSimulationsRoutes(module: SimulationsModule): FastifyPlugi
           tags: ["simulations"],
           summary: "Exécute le moteur de règles et fige le résultat (snapshot immuable)",
           params: z.object({ id: z.string() }),
+          body: CompleteSimulationRequestSchema,
           response: { 200: CompleteSimulationResponseSchema, ...errorResponses },
         },
       },
       async (request, reply) => {
         const id = asSimulationId(request.params.id);
         try {
-          const result = await module.completeSimulation.execute({ id });
+          const result = await module.completeSimulation.execute({
+            id,
+            resumeToken: request.body.resumeToken,
+          });
           return reply.send({
             id,
             result,
@@ -126,6 +132,7 @@ export function createSimulationsRoutes(module: SimulationsModule): FastifyPlugi
           tags: ["simulations"],
           summary: "Récapitulatif PDF de la simulation (document non contractuel)",
           params: z.object({ id: z.string() }),
+          querystring: z.object({ resumeToken: z.string().min(10) }),
           produces: ["application/pdf"],
         },
       },
@@ -133,6 +140,7 @@ export function createSimulationsRoutes(module: SimulationsModule): FastifyPlugi
         try {
           const document = await module.generateSimulationSummary.execute({
             id: asSimulationId(request.params.id),
+            resumeToken: request.query.resumeToken,
           });
           return reply
             .header("Content-Type", document.mimeType)

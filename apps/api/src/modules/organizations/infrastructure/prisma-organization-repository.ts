@@ -51,7 +51,6 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
           { organizationId },
           { parties: { some: { organizationId } } },
         ],
-        organization: { id: { in: [...scope] } },
       },
       include: { parties: { include: { organization: true } } },
       orderBy: { startDate: "desc" },

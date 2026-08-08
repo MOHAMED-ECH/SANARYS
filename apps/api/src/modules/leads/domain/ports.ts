@@ -33,6 +33,7 @@ export interface LeadSubmission {
   readonly consentMarketing: boolean;
   readonly consentVersion: string;
   readonly simulationId?: string | undefined;
+  readonly simulationResumeToken?: string | undefined;
 }
 
 export interface UpsertLeadData {
@@ -71,5 +72,9 @@ export interface LeadRepository {
  * simulations exposera un modele de lecture dedie, seul l'adaptateur change.
  */
 export interface SimulationFactsPort {
-  factsFor(simulationId: string): Promise<Omit<ScoringFacts, "hasSimulation"> | null>;
+  factsFor(command: {
+    simulationId: string;
+    resumeTokenHash: string;
+    now: Date;
+  }): Promise<Omit<ScoringFacts, "hasSimulation"> | null>;
 }

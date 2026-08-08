@@ -59,7 +59,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
-  await app.register(helmet, { contentSecurityPolicy: false });
+  await app.register(helmet, isDevelopment ? { contentSecurityPolicy: false } : {});
   await app.register(cors, {
     origin: env.CORS_ORIGIN.split(",").map((o) => o.trim()),
     credentials: true,
@@ -72,19 +72,21 @@ export async function buildApp(): Promise<FastifyInstance> {
     await app.register(rateLimit, { max: 200, timeWindow: "1 minute" });
   }
 
-  await app.register(swagger, {
-    openapi: {
-      info: {
-        title: "SANARYS 360 API",
-        description:
+  if (env.NODE_ENV !== "production") {
+    await app.register(swagger, {
+      openapi: {
+        info: {
+          title: "SANARYS 360 API",
+          description:
           "API d'acquisition et de portail client SANARYS. Les résultats du simulateur sont indicatifs et non contractuels.",
-        version: "0.1.0",
+          version: "0.1.0",
+        },
+        servers: [{ url: `http://localhost:${env.API_PORT}` }],
       },
-      servers: [{ url: `http://localhost:${env.API_PORT}` }],
-    },
-    transform: jsonSchemaTransform,
-  });
-  await app.register(swaggerUi, { routePrefix: "/docs" });
+      transform: jsonSchemaTransform,
+    });
+    await app.register(swaggerUi, { routePrefix: "/docs" });
+  }
 
   app.get("/health", async () => {
     await prisma.$queryRaw`SELECT 1`;
