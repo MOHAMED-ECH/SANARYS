@@ -12,6 +12,7 @@
     "postinstall": "npm run prisma:generate -w @sanarys/db",
     "setup": "node scripts/setup-env.mjs",
     "doctor": "node scripts/doctor.mjs",
+    "check:login": "node scripts/check-login.mjs",
     "dev:api": "npm run dev -w @sanarys/api",
     "dev:web": "npm run dev -w @sanarys/web",
     "build": "npm run build --workspaces --if-present",

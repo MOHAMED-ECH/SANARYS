@@ -209,6 +209,18 @@ puis de relancer `npm run setup` et de reporter vos valeurs à la main.
 **`Can't reach database server at localhost:5432`**
 PostgreSQL n'est pas démarré. macOS : `brew services start postgresql@16`. Linux : `sudo systemctl start postgresql`. Docker : `docker compose up -d postgres`.
 
+**Savoir en une commande ce que refuse la connexion**
+
+```bash
+npm run check:login                    # compte de démonstration
+npm run check:login -- vous@x.ma mdp   # un compte précis
+```
+
+Le script interroge l'API et traduit le statut : 200 accepté, 401 identifiants
+refusés, 429 trop de tentatives, 500 schéma en retard. Il construit lui-même le
+corps JSON — l'équivalent en `curl` échoue sous PowerShell, dont les règles
+d'échappement diffèrent de celles de bash et produisent un 400 trompeur.
+
 **La connexion renvoie une erreur 500**
 Le schéma de la base est en retard sur le code : une colonne demandée par
 Prisma n'existe pas encore (erreur `P2022`). C'est le cas typique après avoir
