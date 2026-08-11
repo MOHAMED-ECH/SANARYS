@@ -177,6 +177,13 @@ export const authApi = {
    */
   documentUrl: (documentId: string) => `${BASE}/documents/${documentId}/download`,
 
+  /**
+   * URL du rapport mensuel en PDF. Le document est rendu a la demande a partir
+   * des donnees : il n'existe pas de fichier a pointer.
+   */
+  reportPdfUrl: (organizationId: string, period: string) =>
+    `${BASE}/organizations/${organizationId}/reports/${period}/pdf`,
+
   inviteMember: (id: string, payload: { email: string; fullName: string; role: string }) =>
     authRequest<{ id: string }>(`/organizations/${id}/users/invite`, {
       method: "POST",

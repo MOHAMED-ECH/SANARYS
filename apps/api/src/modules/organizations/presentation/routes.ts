@@ -147,6 +147,41 @@ export function createOrganizationsRoutes(module: OrganizationsModule): FastifyP
     );
 
     app.get(
+      "/organizations/:id/reports/:period/pdf",
+      {
+        preHandler: app.requireAuth,
+        schema: {
+          tags: ["portail"],
+          summary: "Rapport mensuel au format PDF, généré à la demande",
+          params: z.object({
+            id: z.string().min(1),
+            period: z.string().regex(/^\d{4}-\d{2}$/, "Période attendue au format AAAA-MM"),
+          }),
+          // Corps binaire : pas de schema de reponse pour le cas nominal.
+          response: errorResponses,
+        },
+      },
+      async (request, reply) => {
+        try {
+          const document = await module.downloadReport.execute({
+            actor: request.actor!,
+            organizationId: request.params.id,
+            period: request.params.period,
+            ip: request.ip,
+          });
+
+          return reply
+            .header("content-type", document.mimeType)
+            .header("content-disposition", `attachment; filename="${document.fileName}"`)
+            .header("cache-control", "private, no-store")
+            .send(document.bytes as unknown as never);
+        } catch (error) {
+          return replyWithDomainError(reply, error);
+        }
+      },
+    );
+
+    app.get(
       "/organizations/:id/documents",
       {
         preHandler: app.requireAuth,

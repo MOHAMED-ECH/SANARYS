@@ -95,6 +95,26 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
     }));
   }
 
+  async findPublishedReport(
+    organizationId: string,
+    period: string,
+    scope: readonly string[],
+  ): Promise<ReportView | null> {
+    if (!scope.includes(organizationId)) return null;
+
+    const row = await this.prisma.report.findFirst({
+      where: { organizationId, period, publishedAt: { not: null } },
+    });
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      period: row.period,
+      kpi: row.kpiJson as Record<string, number | string | boolean>,
+      publishedAt: row.publishedAt,
+    };
+  }
+
   async listMembers(organizationId: string, scope: readonly string[]): Promise<MemberView[]> {
     const rows = await this.prisma.organizationMembership.findMany({
       where: { organizationId, organization: { id: { in: [...scope] } } },

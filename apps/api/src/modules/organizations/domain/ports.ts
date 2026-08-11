@@ -68,11 +68,32 @@ export interface DocumentPayload {
   readonly bytes: Buffer;
 }
 
+/**
+ * Rendu d'un rapport mensuel en document telechargeable.
+ *
+ * Un port, parce que le cas d'usage n'a pas a savoir que le rendu passe par
+ * React et par un moteur PDF — pas plus qu'il ne saurait qu'on genere du HTML
+ * ou du tableur si la demande evoluait.
+ */
+export interface ReportRendererPort {
+  render(params: {
+    organizationName: string;
+    report: ReportView;
+    generatedAt: Date;
+  }): Promise<DocumentPayload>;
+}
+
 export interface OrganizationRepository {
   findInScope(organizationId: string, scope: readonly string[]): Promise<OrganizationView | null>;
   listContracts(organizationId: string, scope: readonly string[]): Promise<ContractView[]>;
   /** Ne retourne que les rapports publies : un brouillon n'est jamais visible. */
   listPublishedReports(organizationId: string, scope: readonly string[]): Promise<ReportView[]>;
+  /** Un rapport publie precis. Null s'il n'existe pas ou n'est pas dans le perimetre. */
+  findPublishedReport(
+    organizationId: string,
+    period: string,
+    scope: readonly string[],
+  ): Promise<ReportView | null>;
   listMembers(organizationId: string, scope: readonly string[]): Promise<MemberView[]>;
 
   /** Documents appartenant a l'organisation, les plus recents d'abord. */

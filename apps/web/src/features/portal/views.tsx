@@ -529,6 +529,10 @@ export function ReportsView({ organizationId }: { organizationId: string }) {
                     <th scope="col" className="px-5 py-3 text-end font-heading font-semibold text-navy-950">
                       Publié le
                     </th>
+                    <th scope="col" className="px-5 py-3 text-end font-heading font-semibold text-navy-950">
+                      <span className="sr-only">Télécharger</span>
+                      PDF
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -549,6 +553,19 @@ export function ReportsView({ organizationId }: { organizationId: string }) {
                         {report.publishedAt
                           ? new Date(report.publishedAt).toLocaleDateString("fr-FR")
                           : "—"}
+                      </td>
+                      <td className="px-5 py-3 text-end">
+                        <a
+                          href={authApi.reportPdfUrl(organizationId, report.period)}
+                          download
+                          className="inline-flex items-center gap-1.5 font-semibold text-petrol-600 hover:underline"
+                        >
+                          <IconDownload />
+                          <span className="sr-only">
+                            Rapport de {formatPeriodLong(report.period)} au format PDF
+                          </span>
+                          <span aria-hidden="true">PDF</span>
+                        </a>
                       </td>
                     </tr>
                   ))}

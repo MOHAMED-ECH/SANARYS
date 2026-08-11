@@ -117,6 +117,7 @@ Ce tableau existe pour qu'aucune démonstration ne laisse croire à une capacit�
 | Synchronisation CRM | **Simulé** : adaptateur no-op, le lead est marqué `MOCK_SYNCED` |
 | Stockage de documents | **Disque local** derrière une interface de forme S3 |
 | Téléchargement de documents dans le portail | **Réel** — liste et téléchargement scopés par organisation, chaque accès journalisé nominativement. Le document de démonstration est généré par le seed ; en production, une convention signée est téléversée |
+| Rapport mensuel en PDF | **Réel** — rendu à la demande depuis les données du rapport, jamais archivé : une copie stockée divergerait de la base à la première correction |
 | Carte des zones | **Schématique**, sans fond cartographique ni calcul d'itinéraire |
 | MFA (TOTP) | **Réel** — enrôlement, codes de secours à usage unique, connexion en deux étapes. Conformité aux RFC 4226/6238 vérifiée sur les vecteurs de test officiels. Pas de QR code : la clé se saisit à la main (voir ci-dessous) |
 | CMS | **Absent** — le contenu éditorial vit dans `apps/web/src/content` |

@@ -2,6 +2,7 @@ import { Document, Page, Text, View, StyleSheet, renderToBuffer } from "@react-p
 import React from "react";
 import type { SimulationInput, SimulationResult } from "@sanarys/schemas";
 import type { SimulationSummaryDocument, SummaryGeneratorPort } from "../domain/ports.js";
+import { pdfPalette } from "../../../shared/pdf/branding.js";
 
 /**
  * Recapitulatif PDF de simulation (cahier des charges section 8.4).
@@ -15,14 +16,9 @@ import type { SimulationSummaryDocument, SummaryGeneratorPort } from "../domain/
  * c'est un chantier dedie, non couvert par cette version.
  */
 
-const palette = {
-  navy: "#0A1730",
-  petrol: "#0E6E7A",
-  copper: "#B5652C",
-  slate: "#4A5568",
-  mist: "#F7F8FA",
-  sand: "#EDE3D2",
-};
+// Charte partagee : voir shared/pdf/branding.ts. Les valeurs recopiees ici
+// avaient diverge des tokens.
+const palette = pdfPalette;
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, color: palette.slate, lineHeight: 1.5 },

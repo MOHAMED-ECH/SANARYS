@@ -11,10 +11,11 @@ import type {
   MembershipRepository,
   OrganizationRepository,
   OrganizationView,
+  ReportRendererPort,
   ReportView,
 } from "../domain/ports.js";
 import type { StoragePort } from "../../../integrations/storage/index.js";
-import { DocumentNotAccessibleError } from "../domain/errors.js";
+import { DocumentNotAccessibleError, ReportNotAccessibleError } from "../domain/errors.js";
 
 /**
  * Cas d'usage du portail client (guide, section 4.6).
@@ -208,6 +209,52 @@ function fileNameFor(document: DocumentView): string {
     .toLowerCase();
   const extension = document.mimeType === "application/pdf" ? "pdf" : "bin";
   return `${base || "document"}.${extension}`;
+}
+
+/**
+ * Rapport mensuel au format telechargeable.
+ *
+ * Le document est rendu a la demande a partir des donnees en base, jamais
+ * archive : archiver une copie ferait exister deux verites qui divergeraient a
+ * la premiere correction, et il faudrait alors decider laquelle fait foi.
+ *
+ * Comme pour les documents stockes, l'acces est journalise : un rapport quitte
+ * le portail, meme s'il ne quitte pas la base.
+ */
+export class DownloadReportUseCase {
+  constructor(
+    private readonly deps: ReadDependencies & { readonly renderer: ReportRendererPort },
+  ) {}
+
+  async execute(context: AccessContext & { period: string }): Promise<DocumentPayload> {
+    const scope = await requireScope(this.deps, context, "report:read");
+
+    const organization = await this.deps.organizations.findInScope(context.organizationId, scope);
+    const report = await this.deps.organizations.findPublishedReport(
+      context.organizationId,
+      context.period,
+      scope,
+    );
+
+    if (!organization || !report) throw new ReportNotAccessibleError();
+
+    const payload = await this.deps.renderer.render({
+      organizationName: organization.name,
+      report,
+      generatedAt: new Date(),
+    });
+
+    await this.deps.audit.record({
+      actorUserId: context.actor.userId,
+      action: "portal.report_downloaded",
+      resourceType: "report",
+      resourceId: report.id,
+      ip: context.ip,
+      metadata: { period: report.period, organizationId: context.organizationId },
+    });
+
+    return payload;
+  }
 }
 
 export class ListMembersUseCase {

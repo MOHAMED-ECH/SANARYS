@@ -291,6 +291,45 @@ describe("isolation multi-organisations via HTTP", () => {
     expect(trace).toBeGreaterThan(0);
   });
 
+  it("un utilisateur de la PME A ne telecharge pas le rapport PDF de la PME B", async () => {
+    const { headers } = await login("isolation-a@test.local");
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/organizations/${ids.pmeB}/reports/2026-07/pdf`,
+      headers,
+    });
+    expect(response.statusCode).toBe(404);
+    expect(response.body).not.toContain("%PDF");
+  });
+
+  it("l'utilisateur de la PME B obtient son rapport PDF, et l'acces est trace", async () => {
+    const { headers } = await login("isolation-b@test.local");
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/organizations/${ids.pmeB}/reports/2026-07/pdf`,
+      headers,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("application/pdf");
+    expect(response.rawPayload.subarray(0, 5).toString("latin1")).toBe("%PDF-");
+
+    const trace = await prisma.auditLog.count({
+      where: { action: "portal.report_downloaded", actorUserId: ids.userB },
+    });
+    expect(trace).toBeGreaterThan(0);
+  });
+
+  it("une periode sans rapport publie reste introuvable", async () => {
+    const { headers } = await login("isolation-b@test.local");
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/organizations/${ids.pmeB}/reports/2019-01/pdf`,
+      headers,
+    });
+    expect(response.statusCode).toBe(404);
+  });
+
   it("un utilisateur de la PME A ne peut pas inviter dans la PME B", async () => {
     const { headers } = await login("isolation-a@test.local");
     const response = await app.inject({

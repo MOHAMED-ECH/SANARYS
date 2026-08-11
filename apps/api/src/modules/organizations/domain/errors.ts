@@ -37,3 +37,10 @@ export class DocumentNotAccessibleError extends NotFoundError {
     super("DOCUMENT_NOT_FOUND", "Document introuvable.");
   }
 }
+
+/** Rapport inexistant, non publie, ou hors perimetre — indistinguables. */
+export class ReportNotAccessibleError extends NotFoundError {
+  constructor() {
+    super("REPORT_NOT_FOUND", "Rapport introuvable.");
+  }
+}

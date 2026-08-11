@@ -2,6 +2,7 @@ import type { PrismaClient } from "@sanarys/db";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { NotificationPort } from "../../integrations/notifications/index.js";
 import type { StoragePort } from "../../integrations/storage/index.js";
+import { PdfReportRenderer } from "./infrastructure/pdf-report-renderer.js";
 import type { AuditTrailPort } from "../../shared/audit/audit-trail.js";
 import type { AuthModule } from "../auth/index.js";
 import {
@@ -9,6 +10,7 @@ import {
   InviteMemberUseCase,
   ListContractsUseCase,
   DownloadDocumentUseCase,
+  DownloadReportUseCase,
   ListDocumentsUseCase,
   ListMembersUseCase,
   ListReportsUseCase,
@@ -29,6 +31,7 @@ export interface OrganizationsModule {
   readonly listMembers: ListMembersUseCase;
   readonly listDocuments: ListDocumentsUseCase;
   readonly downloadDocument: DownloadDocumentUseCase;
+  readonly downloadReport: DownloadReportUseCase;
   readonly inviteMember: InviteMemberUseCase;
 }
 
@@ -54,6 +57,7 @@ export function createOrganizationsModule(
     listMembers: new ListMembersUseCase(read),
     listDocuments: new ListDocumentsUseCase(read),
     downloadDocument: new DownloadDocumentUseCase({ ...read, storage: deps.storage }),
+    downloadReport: new DownloadReportUseCase({ ...read, renderer: new PdfReportRenderer() }),
     inviteMember: new InviteMemberUseCase({
       memberships: new PrismaMembershipRepository(deps.prisma),
       invites: new AuthModuleInviteIssuer(deps.auth),

@@ -20,9 +20,16 @@ test.describe("Portail client — administrateur du groupement", () => {
     await expect(page.getByText(/Convention-cadre CSPS/)).toBeVisible();
     // La clé de répartition s'affiche en pourcentage, jamais en montant.
     await expect(page.getByText("%").first()).toBeVisible();
+    // La convention est téléchargeable, pas seulement résumée.
+    await expect(page.getByRole("link", { name: /Télécharger/ }).first()).toBeVisible();
 
     await page.goto("/portail/rapports");
-    await expect(page.getByText(/Juillet 2026/i)).toBeVisible();
+    // Cible la ligne du tableau, et non n'importe quelle mention de la période :
+    // le lien de téléchargement porte lui aussi le nom du mois.
+    await expect(page.getByRole("rowheader", { name: /juillet 2026/i })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: /Rapport de juillet 2026 au format PDF/i }),
+    ).toBeVisible();
   });
 
   test("ne peut pas atteindre la console commerciale", async ({ page }) => {
