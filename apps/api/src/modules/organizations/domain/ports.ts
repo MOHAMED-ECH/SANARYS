@@ -51,12 +51,45 @@ export interface MemberView {
   readonly activatedAt: Date | null;
 }
 
+/** Metadonnees d'un document, sans son contenu. */
+export interface DocumentView {
+  readonly id: string;
+  readonly kind: "CONTRACT" | "REPORT" | "SIMULATION_SUMMARY" | "OTHER";
+  readonly label: string;
+  readonly mimeType: string;
+  readonly sizeBytes: number | null;
+  readonly createdAt: Date;
+}
+
+/** Document pret a etre servi : metadonnees plus contenu. */
+export interface DocumentPayload {
+  readonly fileName: string;
+  readonly mimeType: string;
+  readonly bytes: Buffer;
+}
+
 export interface OrganizationRepository {
   findInScope(organizationId: string, scope: readonly string[]): Promise<OrganizationView | null>;
   listContracts(organizationId: string, scope: readonly string[]): Promise<ContractView[]>;
   /** Ne retourne que les rapports publies : un brouillon n'est jamais visible. */
   listPublishedReports(organizationId: string, scope: readonly string[]): Promise<ReportView[]>;
   listMembers(organizationId: string, scope: readonly string[]): Promise<MemberView[]>;
+
+  /** Documents appartenant a l'organisation, les plus recents d'abord. */
+  listDocuments(organizationId: string, scope: readonly string[]): Promise<DocumentView[]>;
+
+  /**
+   * Retrouve un document PAR SON PROPRIETAIRE.
+   *
+   * Le perimetre fait partie de la requete, pas d'un controle qui viendrait
+   * apres : un document dont l'organisation n'est pas dans le perimetre est
+   * introuvable, exactement comme s'il n'existait pas. C'est ce qui empeche de
+   * deviner l'existence d'une piece en essayant son identifiant.
+   */
+  findDocumentInScope(
+    documentId: string,
+    scope: readonly string[],
+  ): Promise<(DocumentView & { organizationId: string; storageKey: string }) | null>;
 }
 
 export interface MembershipRepository {

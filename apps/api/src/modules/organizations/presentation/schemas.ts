@@ -47,3 +47,13 @@ export const MemberSchema = z.object({
   invitedAt: z.string(),
   activatedAt: z.string().nullable(),
 });
+
+/** Metadonnees d'un document du portail. Le contenu passe par la route de telechargement. */
+export const DocumentSchema = z.object({
+  id: z.string(),
+  kind: z.enum(["CONTRACT", "REPORT", "SIMULATION_SUMMARY", "OTHER"]),
+  label: z.string(),
+  mimeType: z.string(),
+  sizeBytes: z.number().int().nullable(),
+  createdAt: z.string(),
+});

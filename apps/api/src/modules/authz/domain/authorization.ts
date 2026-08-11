@@ -28,6 +28,8 @@ export type Action =
   | "organization:read"
   | "contract:read"
   | "report:read"
+  /** Telecharger un document appartenant a l'organisation. */
+  | "document:read"
   | "member:invite"
   | "lead:read"
   | "lead:write";
@@ -96,6 +98,7 @@ export function can(actor: Actor, action: Action, resource: ResourceRef = {}): b
     case "organization:read":
     case "contract:read":
     case "report:read":
+    case "document:read":
       return READ_ROLES.includes(role);
     case "member:invite":
       // L'invitation exige une appartenance DIRECTE : pas d'heritage.

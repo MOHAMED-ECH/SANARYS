@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import clsx from "clsx";
-import type { ContractDto, OrganizationDto, ReportDto } from "@/lib/auth-api";
+import type { ContractDto, DocumentDto, OrganizationDto, ReportDto } from "@/lib/auth-api";
 import { authApi } from "@/lib/auth-api";
-import { IconTrendDown, IconTrendUp } from "@/components/ui/icons";
+import { IconContract, IconDownload, IconTrendDown, IconTrendUp } from "@/components/ui/icons";
 import {
   Sparkline,
   TrendChart,
@@ -311,8 +311,11 @@ function TrendIcon({
 
 export function ContractsView({ organizationId }: { organizationId: string }) {
   const contracts = useAsync<ContractDto[]>(() => authApi.contracts(organizationId), [organizationId]);
+  const documents = useAsync<DocumentDto[]>(() => authApi.documents(organizationId), [organizationId]);
 
   return (
+    <div className="space-y-10">
+      <DocumentsPanel documents={documents} />
     <Panel loading={contracts.loading} error={contracts.error}>
       {contracts.data && contracts.data.length > 0 ? (
         <ul className="space-y-5">
@@ -378,6 +381,68 @@ export function ContractsView({ organizationId }: { organizationId: string }) {
         />
       )}
     </Panel>
+    </div>
+  );
+}
+
+/**
+ * Pieces telechargeables de l'organisation.
+ *
+ * Le telechargement passe par une ancre et non par un fetch : le navigateur
+ * gere alors l'enregistrement, le nom de fichier propose par l'API et la
+ * progression. Chaque acces est journalise nominativement cote serveur — c'est
+ * dit ici, parce qu'un client a le droit de le savoir.
+ */
+function DocumentsPanel({
+  documents,
+}: {
+  documents: { data: DocumentDto[] | null; error: string | null; loading: boolean };
+}) {
+  return (
+    <section aria-labelledby="titre-documents">
+      <h2 id="titre-documents" className="font-heading text-lg font-bold text-navy-950">
+        Documents
+      </h2>
+      <p className="mt-1 text-sm text-slate-600">
+        Les pièces contractuelles de votre organisation. Chaque téléchargement est journalisé.
+      </p>
+
+      <Panel loading={documents.loading} error={documents.error}>
+        {documents.data && documents.data.length > 0 ? (
+          <ul className="mt-4 divide-y divide-navy-950/8 overflow-hidden rounded-lg border border-navy-950/8 bg-mist-white">
+            {documents.data.map((document) => (
+              <li key={document.id} className="flex flex-wrap items-center gap-4 p-4">
+                <IconContract className="text-petrol-600" />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-heading font-semibold text-navy-950">
+                    {document.label}
+                  </span>
+                  <span className="block text-sm text-slate-400">
+                    Déposé le {new Date(document.createdAt).toLocaleDateString("fr-FR")} ·{" "}
+                    {document.mimeType === "application/pdf" ? "PDF" : document.mimeType}
+                  </span>
+                </span>
+                <a
+                  href={authApi.documentUrl(document.id)}
+                  download
+                  className="inline-flex items-center gap-2 rounded-md border border-petrol-600/30 px-4 py-2 text-sm font-semibold text-petrol-600 transition-colors hover:bg-petrol-100"
+                >
+                  <IconDownload />
+                  Télécharger
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="mt-4">
+            <EmptyState
+              title="Aucun document disponible"
+              message="Votre convention-cadre et vos pièces contractuelles apparaîtront ici dès leur dépôt par SANARYS."
+            />
+          </div>
+        )}
+      </Panel>
+    </section>
   );
 }
 

@@ -114,7 +114,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   const auditRequests = createAuditRequestsModule({ prisma, notifications, leads });
   // Le portail delegue l'emission des invitations au module auth, pour la
   // meme raison : la politique des jetons appartient a un seul endroit.
-  const organizations = createOrganizationsModule({ prisma, notifications, audit, auth });
+  const organizations = createOrganizationsModule({ prisma, notifications, audit, auth, storage });
   const staff = createStaffModule({ prisma, audit });
 
   // La garde d'authentification a besoin du module auth et du chargeur

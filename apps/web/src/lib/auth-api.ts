@@ -84,6 +84,15 @@ export interface MemberDto {
   activatedAt: string | null;
 }
 
+export interface DocumentDto {
+  id: string;
+  kind: "CONTRACT" | "REPORT" | "SIMULATION_SUMMARY" | "OTHER";
+  label: string;
+  mimeType: string;
+  sizeBytes: number | null;
+  createdAt: string;
+}
+
 export interface StaffLead {
   id: string;
   status: string;
@@ -155,6 +164,18 @@ export const authApi = {
   reports: (id: string) => authRequest<ReportDto[]>(`/organizations/${id}/reports`),
 
   members: (id: string) => authRequest<MemberDto[]>(`/organizations/${id}/members`),
+
+  documents: (id: string) => authRequest<DocumentDto[]>(`/organizations/${id}/documents`),
+
+  /**
+   * URL de telechargement d'un document.
+   *
+   * Une simple ancre plutot qu'un fetch : le navigateur gere alors lui-meme
+   * l'enregistrement du fichier, la barre de progression et le nom propose par
+   * l'API. Le cookie de session part avec la requete, comme pour n'importe
+   * quelle navigation.
+   */
+  documentUrl: (documentId: string) => `${BASE}/documents/${documentId}/download`,
 
   inviteMember: (id: string, payload: { email: string; fullName: string; role: string }) =>
     authRequest<{ id: string }>(`/organizations/${id}/users/invite`, {

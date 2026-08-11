@@ -112,3 +112,13 @@ export function IconTrendDown({ className }: IconProps) {
     </Frame>
   );
 }
+
+export function IconDownload({ className }: IconProps) {
+  return (
+    <Frame className={className}>
+      <path d="M12 3v12" />
+      <path d="M7.5 10.5L12 15l4.5-4.5" />
+      <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+    </Frame>
+  );
+}

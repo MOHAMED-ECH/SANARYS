@@ -1,6 +1,7 @@
 import type { MembershipRole, PrismaClient } from "@sanarys/db";
 import type {
   ContractView,
+  DocumentView,
   MemberView,
   MembershipRepository,
   OrganizationRepository,
@@ -112,6 +113,60 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
       activatedAt: row.user.activatedAt,
     }));
   }
+
+  async listDocuments(organizationId: string, scope: readonly string[]): Promise<DocumentView[]> {
+    // Le perimetre s'applique DANS la requete : filtrer apres coup laisserait
+    // les lignes voisines remonter jusqu'a la couche superieure.
+    if (!scope.includes(organizationId)) return [];
+
+    const rows = await this.prisma.document.findMany({
+      where: { ownerOrgId: organizationId, kind: { in: ["CONTRACT", "REPORT"] } },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return rows.map(toDocumentView);
+  }
+
+  async findDocumentInScope(documentId: string, scope: readonly string[]) {
+    if (scope.length === 0) return null;
+
+    const row = await this.prisma.document.findFirst({
+      where: { id: documentId, ownerOrgId: { in: [...scope] }, kind: { in: ["CONTRACT", "REPORT"] } },
+    });
+    if (!row || !row.ownerOrgId) return null;
+
+    return { ...toDocumentView(row), organizationId: row.ownerOrgId, storageKey: row.storageKey };
+  }
+}
+
+/** Libelle lisible d'un document, deduit de sa nature et de sa date. */
+function toDocumentView(row: {
+  id: string;
+  kind: string;
+  storageKey: string;
+  mimeType: string;
+  createdAt: Date;
+}): DocumentView {
+  const KINDS: Record<string, string> = {
+    CONTRACT: "Convention-cadre",
+    REPORT: "Rapport mensuel",
+    SIMULATION_SUMMARY: "Récapitulatif de simulation",
+    OTHER: "Document",
+  };
+
+  // La cle de stockage porte deja une periode pour les rapports
+  // (« reports/2026-07.pdf ») : on la reutilise plutot que d'inventer un titre.
+  const periode = /(\d{4}-\d{2})/.exec(row.storageKey)?.[1];
+  const base = KINDS[row.kind] ?? "Document";
+
+  return {
+    id: row.id,
+    kind: row.kind as DocumentView["kind"],
+    label: periode ? `${base} ${periode}` : base,
+    mimeType: row.mimeType,
+    sizeBytes: null,
+    createdAt: row.createdAt,
+  };
 }
 
 export class PrismaMembershipRepository implements MembershipRepository {

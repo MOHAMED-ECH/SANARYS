@@ -6,6 +6,7 @@ import { replyWithDomainError } from "../../../shared/http/error-mapper.js";
 import type { OrganizationsModule } from "../index.js";
 import {
   ContractSchema,
+  DocumentSchema,
   MemberSchema,
   OrganizationSchema,
   ReportSchema,
@@ -139,6 +140,73 @@ export function createOrganizationsRoutes(module: OrganizationsModule): FastifyP
               activatedAt: member.activatedAt?.toISOString() ?? null,
             })),
           );
+        } catch (error) {
+          return replyWithDomainError(reply, error);
+        }
+      },
+    );
+
+    app.get(
+      "/organizations/:id/documents",
+      {
+        preHandler: app.requireAuth,
+        schema: {
+          tags: ["portail"],
+          summary: "Documents de l'organisation (convention-cadre, rapports)",
+          params,
+          response: { 200: z.array(DocumentSchema), ...errorResponses },
+        },
+      },
+      async (request, reply) => {
+        try {
+          const documents = await module.listDocuments.execute({
+            actor: request.actor!,
+            organizationId: request.params.id,
+            ip: request.ip,
+          });
+
+          return reply.send(
+            documents.map((document) => ({
+              ...document,
+              createdAt: document.createdAt.toISOString(),
+            })),
+          );
+        } catch (error) {
+          return replyWithDomainError(reply, error);
+        }
+      },
+    );
+
+    app.get(
+      "/documents/:id/download",
+      {
+        preHandler: app.requireAuth,
+        schema: {
+          tags: ["portail"],
+          summary: "Télécharge un document — accès journalisé nominativement",
+          params,
+          // Pas de schema de reponse pour le cas nominal : le corps est un flux
+          // binaire, pas du JSON. Le declarer ferait passer le Buffer par le
+          // serialiseur Zod, qui le refuserait.
+          response: errorResponses,
+        },
+      },
+      async (request, reply) => {
+        try {
+          const document = await module.downloadDocument.execute({
+            actor: request.actor!,
+            documentId: request.params.id,
+            ip: request.ip,
+          });
+
+          return reply
+            .header("content-type", document.mimeType)
+            // `attachment` et non `inline` : un document contractuel se
+            // telecharge, il ne s'ouvre pas dans le contexte de la page.
+            .header("content-disposition", `attachment; filename="${document.fileName}"`)
+            // Une piece nominative n'a rien a faire dans un cache partage.
+            .header("cache-control", "private, no-store")
+            .send(document.bytes as unknown as never);
         } catch (error) {
           return replyWithDomainError(reply, error);
         }

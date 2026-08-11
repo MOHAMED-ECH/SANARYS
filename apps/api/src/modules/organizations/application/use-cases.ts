@@ -1,9 +1,11 @@
 import type { NotificationPort } from "../../../integrations/notifications/index.js";
 import type { AuditTrailPort } from "../../../shared/audit/audit-trail.js";
-import { resolveScope, type Action, type Actor } from "../../authz/index.js";
+import { accessibleOrganizationIds, resolveScope, type Action, type Actor } from "../../authz/index.js";
 import { InviteNotAllowedError, OrganizationNotAccessibleError } from "../domain/errors.js";
 import type {
   ContractView,
+  DocumentPayload,
+  DocumentView,
   InviteIssuerPort,
   MemberView,
   MembershipRepository,
@@ -11,6 +13,8 @@ import type {
   OrganizationView,
   ReportView,
 } from "../domain/ports.js";
+import type { StoragePort } from "../../../integrations/storage/index.js";
+import { DocumentNotAccessibleError } from "../domain/errors.js";
 
 /**
  * Cas d'usage du portail client (guide, section 4.6).
@@ -111,6 +115,99 @@ export class ListReportsUseCase {
 
     return reports;
   }
+}
+
+export class ListDocumentsUseCase {
+  constructor(private readonly deps: ReadDependencies) {}
+
+  async execute(context: AccessContext): Promise<DocumentView[]> {
+    const scope = await requireScope(this.deps, context, "document:read");
+    const documents = await this.deps.organizations.listDocuments(context.organizationId, scope);
+
+    await this.deps.audit.record({
+      actorUserId: context.actor.userId,
+      action: "portal.documents_listed",
+      resourceType: "organization",
+      resourceId: context.organizationId,
+      ip: context.ip,
+      metadata: { count: documents.length },
+    });
+
+    return documents;
+  }
+}
+
+/**
+ * Sert le contenu d'un document.
+ *
+ * L'autorisation ne se fait pas ici sur un identifiant d'organisation fourni
+ * par l'appelant — il n'y en a pas : la requete ne porte que l'identifiant du
+ * document. Le perimetre de l'acteur est donc passe au depot, qui ne retrouve
+ * le document que s'il appartient a une organisation accessible. Un document
+ * hors perimetre est introuvable, pas « interdit » : la reponse ne revele donc
+ * pas son existence.
+ *
+ * Chaque telechargement est journalise nominativement. C'est le seul endroit
+ * du portail ou une piece contractuelle quitte le systeme, et c'est exactement
+ * ce qu'un audit voudra pouvoir reconstituer.
+ */
+export class DownloadDocumentUseCase {
+  constructor(
+    private readonly deps: ReadDependencies & { readonly storage: StoragePort },
+  ) {}
+
+  async execute(command: {
+    actor: Actor;
+    documentId: string;
+    ip?: string | undefined;
+  }): Promise<DocumentPayload> {
+    const scope = accessibleOrganizationIds(command.actor);
+
+    const document =
+      scope.length === 0
+        ? null
+        : await this.deps.organizations.findDocumentInScope(command.documentId, scope);
+
+    if (!document) {
+      await this.deps.audit.record({
+        actorUserId: command.actor.userId,
+        action: "portal.document_denied",
+        resourceType: "document",
+        resourceId: command.documentId,
+        ip: command.ip,
+      });
+      throw new DocumentNotAccessibleError();
+    }
+
+    const bytes = await this.deps.storage.get(document.storageKey);
+
+    await this.deps.audit.record({
+      actorUserId: command.actor.userId,
+      action: "portal.document_downloaded",
+      resourceType: "document",
+      resourceId: document.id,
+      ip: command.ip,
+      metadata: { kind: document.kind, organizationId: document.organizationId },
+    });
+
+    return {
+      fileName: fileNameFor(document),
+      mimeType: document.mimeType,
+      bytes,
+    };
+  }
+}
+
+/** Nom de fichier propose au navigateur, lisible et sans caractere hasardeux. */
+function fileNameFor(document: DocumentView): string {
+  const base = document.label
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+  const extension = document.mimeType === "application/pdf" ? "pdf" : "bin";
+  return `${base || "document"}.${extension}`;
 }
 
 export class ListMembersUseCase {

@@ -116,6 +116,7 @@ Ce tableau existe pour qu'aucune démonstration ne laisse croire à une capacit�
 | Email, SMS, WhatsApp | **Simulé** : l'intention est journalisée, rien n'est envoyé |
 | Synchronisation CRM | **Simulé** : adaptateur no-op, le lead est marqué `MOCK_SYNCED` |
 | Stockage de documents | **Disque local** derrière une interface de forme S3 |
+| Téléchargement de documents dans le portail | **Réel** — liste et téléchargement scopés par organisation, chaque accès journalisé nominativement. Le document de démonstration est généré par le seed ; en production, une convention signée est téléversée |
 | Carte des zones | **Schématique**, sans fond cartographique ni calcul d'itinéraire |
 | MFA (TOTP) | **Réel** — enrôlement, codes de secours à usage unique, connexion en deux étapes. Conformité aux RFC 4226/6238 vérifiée sur les vecteurs de test officiels. Pas de QR code : la clé se saisit à la main (voir ci-dessous) |
 | CMS | **Absent** — le contenu éditorial vit dans `apps/web/src/content` |
@@ -137,7 +138,7 @@ Couverture actuelle :
 
 - **Moteur de règles** — une assertion par branche de règle, plus la traçabilité du snapshot.
 - **Scoring et dédoublonnage des leads** — dont la garantie qu'une re-soumission moins renseignée ne dégrade pas un lead qualifié.
-- **Autorisation** — tests unitaires de la matrice de décision et tests HTTP réels d'isolation : une PME n'atteint aucune donnée d'une autre PME par URL, contrat, rapport ou invitation.
+- **Autorisation** — tests unitaires de la matrice de décision et tests HTTP réels d'isolation : une PME n'atteint aucune donnée d'une autre PME par URL, contrat, rapport, document ou invitation. Le refus de téléchargement est vérifié à la fois sur le statut, sur l'absence du contenu dans la réponse, et sur la trace laissée au journal d'audit.
 - **Authentification** — verrouillage après échecs, révocation de session, absence d'énumération de comptes (vérifiée sur la réponse HTTP, pas seulement sur la politique), protection CSRF.
 - **Second facteur** — vecteurs officiels des RFC 4226 et 6238, puis parcours HTTP complet : enrôlement en deux temps, mot de passe seul devenu insuffisant, défi non rejouable, code de secours à usage unique.
 - **Parcours de conversion** — simulation complète en sept étapes, résultat expliqué, téléchargement PDF, demande d'audit.

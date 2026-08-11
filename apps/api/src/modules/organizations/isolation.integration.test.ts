@@ -1,3 +1,6 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { prisma } from "@sanarys/db";
@@ -27,6 +30,7 @@ const ids = {
   userB: "test-user-pme-b",
   staff: "test-user-staff",
   contractB: "test-contract-b",
+  documentB: "test-document-b",
   reportB: "test-report-b",
 };
 
@@ -123,6 +127,28 @@ beforeAll(async () => {
     },
   });
 
+  // Document confidentiel de la PME B, avec de vrais octets sur le disque :
+  // sans fichier, un test de telechargement echouerait pour la mauvaise raison.
+  const storageKey = "contracts/test-isolation-b.pdf";
+  const chemin = join(
+    resolve(fileURLToPath(new URL("../../../", import.meta.url)), process.env.STORAGE_DIR ?? "./var/storage"),
+    storageKey,
+  );
+  await mkdir(dirname(chemin), { recursive: true });
+  await writeFile(chemin, Buffer.from("%PDF-1.4 SECRET-PME-B", "latin1"));
+
+  await prisma.document.upsert({
+    where: { id: ids.documentB },
+    update: {},
+    create: {
+      id: ids.documentB,
+      kind: "CONTRACT",
+      storageKey,
+      mimeType: "application/pdf",
+      ownerOrgId: ids.pmeB,
+    },
+  });
+
   await prisma.report.upsert({
     where: { id: ids.reportB },
     update: {},
@@ -139,6 +165,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await prisma.auditLog.deleteMany({ where: { actorUserId: { in: [ids.userA, ids.userB, ids.staff] } } });
   await prisma.session.deleteMany({ where: { userId: { in: [ids.userA, ids.userB, ids.staff] } } });
+  await prisma.document.deleteMany({ where: { id: ids.documentB } });
   await prisma.report.deleteMany({ where: { id: ids.reportB } });
   await prisma.contract.deleteMany({ where: { id: ids.contractB } });
   await prisma.organizationMembership.deleteMany({
@@ -200,6 +227,68 @@ describe("isolation multi-organisations via HTTP", () => {
     });
     expect(response.statusCode).toBe(404);
     expect(response.body).not.toContain("42");
+  });
+
+  it("un utilisateur de la PME A ne voit pas les documents de la PME B", async () => {
+    const { headers } = await login("isolation-a@test.local");
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/organizations/${ids.pmeB}/documents`,
+      headers,
+    });
+    expect(response.statusCode).toBe(404);
+  });
+
+  it("un utilisateur de la PME A ne telecharge pas un document de la PME B", async () => {
+    const { headers } = await login("isolation-a@test.local");
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/documents/${ids.documentB}/download`,
+      headers,
+    });
+
+    // 404 et non 403 : repondre « interdit » confirmerait que ce document
+    // existe, ce qui suffirait a cartographier les pieces des voisins en
+    // essayant des identifiants.
+    expect(response.statusCode).toBe(404);
+    expect(response.body).not.toContain("SECRET-PME-B");
+  });
+
+  it("le refus de telechargement laisse une trace", async () => {
+    const avant = await prisma.auditLog.count({
+      where: { action: "portal.document_denied", actorUserId: ids.userA },
+    });
+
+    const { headers } = await login("isolation-a@test.local");
+    await app.inject({
+      method: "GET",
+      url: `/api/v1/documents/${ids.documentB}/download`,
+      headers,
+    });
+
+    const apres = await prisma.auditLog.count({
+      where: { action: "portal.document_denied", actorUserId: ids.userA },
+    });
+    expect(apres).toBe(avant + 1);
+  });
+
+  it("l'utilisateur de la PME B telecharge bien son propre document", async () => {
+    const { headers } = await login("isolation-b@test.local");
+    const response = await app.inject({
+      method: "GET",
+      url: `/api/v1/documents/${ids.documentB}/download`,
+      headers,
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toContain("application/pdf");
+    expect(response.headers["content-disposition"]).toContain("attachment");
+    expect(response.rawPayload.toString("latin1")).toContain("SECRET-PME-B");
+
+    const trace = await prisma.auditLog.count({
+      where: { action: "portal.document_downloaded", resourceId: ids.documentB },
+    });
+    expect(trace).toBeGreaterThan(0);
   });
 
   it("un utilisateur de la PME A ne peut pas inviter dans la PME B", async () => {

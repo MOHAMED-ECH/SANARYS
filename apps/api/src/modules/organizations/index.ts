@@ -1,12 +1,15 @@
 import type { PrismaClient } from "@sanarys/db";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import type { NotificationPort } from "../../integrations/notifications/index.js";
+import type { StoragePort } from "../../integrations/storage/index.js";
 import type { AuditTrailPort } from "../../shared/audit/audit-trail.js";
 import type { AuthModule } from "../auth/index.js";
 import {
   GetOrganizationUseCase,
   InviteMemberUseCase,
   ListContractsUseCase,
+  DownloadDocumentUseCase,
+  ListDocumentsUseCase,
   ListMembersUseCase,
   ListReportsUseCase,
 } from "./application/use-cases.js";
@@ -24,6 +27,8 @@ export interface OrganizationsModule {
   readonly listContracts: ListContractsUseCase;
   readonly listReports: ListReportsUseCase;
   readonly listMembers: ListMembersUseCase;
+  readonly listDocuments: ListDocumentsUseCase;
+  readonly downloadDocument: DownloadDocumentUseCase;
   readonly inviteMember: InviteMemberUseCase;
 }
 
@@ -31,6 +36,7 @@ export interface OrganizationsModuleDependencies {
   readonly prisma: PrismaClient;
   readonly notifications: NotificationPort;
   readonly audit: AuditTrailPort;
+  readonly storage: StoragePort;
   /** L'emission des invitations reste la charge du module auth. */
   readonly auth: AuthModule;
 }
@@ -46,6 +52,8 @@ export function createOrganizationsModule(
     listContracts: new ListContractsUseCase(read),
     listReports: new ListReportsUseCase(read),
     listMembers: new ListMembersUseCase(read),
+    listDocuments: new ListDocumentsUseCase(read),
+    downloadDocument: new DownloadDocumentUseCase({ ...read, storage: deps.storage }),
     inviteMember: new InviteMemberUseCase({
       memberships: new PrismaMembershipRepository(deps.prisma),
       invites: new AuthModuleInviteIssuer(deps.auth),

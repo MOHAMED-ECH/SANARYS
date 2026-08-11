@@ -25,3 +25,15 @@ export class InviteNotAllowedError extends ForbiddenError {
     super("INVITE_NOT_ALLOWED", "Action non autorisée.");
   }
 }
+
+/**
+ * Document introuvable ou hors perimetre — volontairement indistinguables.
+ *
+ * Repondre « interdit » sur un document qui existe mais appartient a une autre
+ * organisation confirmerait son existence. Un 404 ne dit rien.
+ */
+export class DocumentNotAccessibleError extends NotFoundError {
+  constructor() {
+    super("DOCUMENT_NOT_FOUND", "Document introuvable.");
+  }
+}
