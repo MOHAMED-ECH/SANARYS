@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "seed:documents": "tsx src/scripts/seed-documents.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
@@ -32,6 +33,7 @@
   "devDependencies": {
     "@types/node": "^22.7.5",
     "@types/react": "^18.3.11",
+    "pdfjs-dist": "^4.0.379",
     "pino-pretty": "^11.2.2",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3",

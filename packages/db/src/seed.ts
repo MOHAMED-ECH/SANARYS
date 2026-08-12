@@ -1,10 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import argon2 from "argon2";
-import { mkdir, writeFile } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { prisma } from "./client.js";
-import { buildSimplePdf } from "./simple-pdf.js";
 
 /**
  * Regles v0 du moteur de recommandation du simulateur CSPS.
@@ -119,79 +115,6 @@ const SIMULATION_RULESET_V0 = {
 };
 
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
-
-/**
- * Racine du stockage de documents.
- *
- * `STORAGE_DIR` est relatif, et l'API le resout depuis SON repertoire de
- * travail (`apps/api`). Le seed s'execute depuis `packages/db` : il doit donc
- * viser le meme dossier explicitement, sinon il deposerait les fichiers a un
- * endroit ou l'application ne les cherchera jamais.
- */
-const STORAGE_ROOT = resolve(
-  fileURLToPath(new URL("../../../apps/api", import.meta.url)),
-  process.env.STORAGE_DIR ?? "./var/storage",
-);
-
-async function writeDocumentFile(storageKey: string, bytes: Buffer) {
-  const chemin = join(STORAGE_ROOT, storageKey);
-  await mkdir(dirname(chemin), { recursive: true });
-  await writeFile(chemin, bytes);
-}
-
-/**
- * Convention-cadre de demonstration : une vraie piece PDF, deposee dans le
- * stockage et referencee en base.
- *
- * En production, ce document est signe puis televerse — il n'est jamais
- * fabrique par le code. Ici il existe pour qu'un parcours de telechargement
- * soit demontrable de bout en bout, avec de vrais octets.
- */
-async function seedContractDocument(organizationId: string, contractLabel: string) {
-  const storageKey = "contracts/convention-cadre-bouskoura.pdf";
-
-  const bytes = buildSimplePdf([
-    { text: "SANARYS", size: 20 },
-    { text: "Sante operationnelle mutualisee des zones industrielles", size: 9 },
-    { text: contractLabel, size: 15, spaceBefore: 24 },
-    { text: "Document de demonstration", size: 9 },
-    { text: "Objet", size: 12, spaceBefore: 22 },
-    {
-      text: "Mise a disposition d'un centre de services partages sanitaires (CSPS) au benefice",
-    },
-    { text: "des entreprises membres du groupement, dans la zone industrielle de Bouskoura." },
-    { text: "Modules contractualises", size: 12, spaceBefore: 18 },
-    { text: "- Ambulance dediee, type B, avec equipage" },
-    { text: "- Presence infirmiere sur les heures d'activite de la zone" },
-    { text: "Cle de repartition", size: 12, spaceBefore: 18 },
-    { text: "40 % en part fixe egale entre membres, 60 % au prorata de l'effectif declare." },
-    { text: "La cle est revisee annuellement sur la base des effectifs constates." },
-    { text: "Engagements de service", size: 12, spaceBefore: 18 },
-    { text: "- Disponibilite du dispositif sur l'integralite des heures d'activite" },
-    { text: "- Objectif de delai d'intervention inferieur a 10 minutes depuis le point d'ancrage" },
-    { text: "- Rapport mensuel agrege, publie dans les cinq jours ouvres" },
-    {
-      text: "Ce document est un exemple genere pour la demonstration. Il n'a aucune valeur",
-      size: 8,
-      spaceBefore: 26,
-    },
-    { text: "contractuelle et ne remplace pas une convention signee.", size: 8 },
-  ]);
-
-  await writeDocumentFile(storageKey, bytes);
-
-  await prisma.document.upsert({
-    where: { id: "seed-document-convention" },
-    update: {},
-    create: {
-      id: "seed-document-convention",
-      kind: "CONTRACT",
-      storageKey,
-      mimeType: "application/pdf",
-      ownerOrgId: organizationId,
-    },
-  });
-}
 
 /**
  * Douze mois de rapports mensuels pour l'organisation donnee.
@@ -401,8 +324,6 @@ async function main() {
   console.log("Seed: historique de rapports mensuels...");
   await seedMonthlyReports(groupement.id);
 
-  console.log("Seed: convention-cadre telechargeable...");
-  await seedContractDocument(groupement.id, contract.label);
 
   console.log("Seed: simulation de demo (token de reprise hashe)...");
   const demoResumeToken = randomBytes(32).toString("base64url");
