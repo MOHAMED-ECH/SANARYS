@@ -7,8 +7,9 @@ const API_BASE = (process.env.API_INTERNAL_URL ?? "http://127.0.0.1:4000/api/v1"
   .replace(/^http:\/\/localhost:/, "http://127.0.0.1:")
   .replace(/\/$/, "");
 
-async function proxy(request: NextRequest, { params }: { params: { path: string[] } }) {
-  const path = params.path.map(encodeURIComponent).join("/");
+async function proxy(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  const { path: pathSegments } = await params;
+  const path = pathSegments.map(encodeURIComponent).join("/");
   const sourceUrl = new URL(request.url);
   const targetUrl = `${API_BASE}/${path}${sourceUrl.search}`;
 

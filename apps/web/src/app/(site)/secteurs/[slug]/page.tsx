@@ -9,14 +9,20 @@ export function generateStaticParams() {
   return SECTORS.map((sector) => ({ slug: sector.slug }));
 }
 
-export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
-  const sector = SECTORS.find((s) => s.slug === params.slug);
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const sector = SECTORS.find((s) => s.slug === slug);
   if (!sector) return {};
   return { title: sector.title, description: sector.lead };
 }
 
-export default function SectorPage({ params }: { params: { slug: string } }) {
-  const sector = SECTORS.find((s) => s.slug === params.slug);
+export default async function SectorPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const sector = SECTORS.find((s) => s.slug === slug);
   if (!sector) notFound();
 
   return (

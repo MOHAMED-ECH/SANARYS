@@ -26,8 +26,9 @@ async function loadZones(): Promise<IndustrialZoneDto[]> {
 export default async function SimulateurPage({
   searchParams,
 }: {
-  searchParams: { sim?: string };
+  searchParams: Promise<{ sim?: string }>;
 }) {
+  const { sim } = await searchParams;
   const zones = await loadZones();
 
   return (
@@ -44,7 +45,7 @@ export default async function SimulateurPage({
           </p>
         </header>
 
-        <SimulatorWizard zones={zones} initialSimulationId={searchParams.sim} />
+        <SimulatorWizard zones={zones} initialSimulationId={sim} />
       </div>
     </div>
   );
