@@ -15,6 +15,7 @@ coverage/
 playwright-report/
 test-results/
 .turbo/
+graphify-out/
 *.tsbuildinfo
 packages/db/prisma/dev.db
 tests/e2e/test-results/
